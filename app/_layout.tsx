@@ -213,9 +213,6 @@ function AppNavigation({ showBackButton, setUserTheme }) {
   );
 }
 
-// ------------------------------------------------------------------
-// 2. THE ROOT LAYOUT (PROVIDERS)
-// ------------------------------------------------------------------
 export default function RootLayout() {
   const [showBackButton, setShowBackButton] = useState(false);
   const [userTheme, setUserTheme] = useState("DARK"); // DEFAULT_USER_THEME
