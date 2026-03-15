@@ -125,7 +125,7 @@ const THEMES: ThemeMap = {
 
 SplashScreen.preventAutoHideAsync();
 
-
+// Bot Update
 
 function AppNavigation({ showBackButton, setUserTheme }) {
   const [loggedIn, setLoggedIn] = useState(false);
