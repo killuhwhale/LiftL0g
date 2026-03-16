@@ -19,6 +19,7 @@ import {
   useGetProfileViewQuery,
   useGetProfileWorkoutGroupsQuery,
   useSearchWorkoutGroupsQuery,
+  useLazyPingQuery,
 } from "@/src/redux/api/apiSlice";
 import {
   TSParagrapghText,
@@ -44,9 +45,12 @@ import { useGenerate531Template } from "@/src/app_components/templates/fivethree
  */
 
 function workoutGroupsEqual(
-  group1: WorkoutGroupCardProps[],
-  group2: WorkoutGroupCardProps[]
+  group1: WorkoutGroupCardProps[] | undefined,
+  group2: WorkoutGroupCardProps[] | undefined
 ): boolean {
+  if (!Array.isArray(group1) || !Array.isArray(group2)) {
+    return group1 === group2;
+  }
   if (group1.length !== group2.length) {
     return false;
   }
@@ -70,6 +74,18 @@ const PAGE_SIZE = 20;
 const UserWorkoutsScreen: FunctionComponent = (props) => {
   const theme = useTheme();
 
+  const [pingLabel, setPingLabel] = useState("Ping Server");
+  const [triggerPing, { isFetching: isPinging }] = useLazyPingQuery();
+
+  const handlePing = async () => {
+    const result = await triggerPing(undefined);
+    if (result.data?.message) {
+      setPingLabel(result.data.message);
+    } else {
+      setPingLabel("Error :(");
+    }
+  };
+
   const [page, setPage] = useState(1);
   const {
     data: dataWG,
@@ -87,19 +103,16 @@ const UserWorkoutsScreen: FunctionComponent = (props) => {
   const [searchTextDisplay, setSearchTextDisplay] = useState("");
   const [searchResults, setSearchResults] = useState<WorkoutGroupProps[]>([]); // Search resutls
 
-  const {
-    data: profileData,
-    isLoading: isUserLoading,
-    error: userError,
-  } = useGetProfileViewQuery("");
+  const { data, isLoading, isSuccess, isError, error } =
+    useGetProfileViewQuery("");
 
   const {
     data: searchData,
     isFetching: isFetchingSearch,
     refetch: refetchSearch,
   } = useSearchWorkoutGroupsQuery(
-    { query: searchText, userID: profileData?.user?.id },
-    { skip: !isSearching || isUserLoading }
+    { query: searchText, userID: data?.user?.id },
+    { skip: !isSearching || isLoading || !data?.user?.id }
   );
 
   const loadMore = () => {
@@ -132,9 +145,6 @@ const UserWorkoutsScreen: FunctionComponent = (props) => {
       setWorkouts([]);
     }
   }, [dataWG]);
-
-  const { data, isLoading, isSuccess, isError, error } =
-    useGetProfileViewQuery("");
 
   const handleNavCreateWorkoutGroupScreen = () => {
     console.log("Navigating to CreateWorkoutGroupScreen");
@@ -195,6 +205,25 @@ const UserWorkoutsScreen: FunctionComponent = (props) => {
       }}
     >
       <BannerAddMembership />
+
+      {/* Ping test button */}
+      <TouchableOpacity
+        onPress={handlePing}
+        disabled={isPinging}
+        style={{
+          margin: 8,
+          paddingVertical: 10,
+          paddingHorizontal: 16,
+          backgroundColor: theme.palette.AWE_Blue,
+          borderRadius: 8,
+          alignItems: "center",
+        }}
+      >
+        <TSInputTextSm textStyles={{ color: theme.palette.text }}>
+          {isPinging ? "..." : pingLabel}
+        </TSInputTextSm>
+      </TouchableOpacity>
+
       <View
         style={{
           width: "100%",

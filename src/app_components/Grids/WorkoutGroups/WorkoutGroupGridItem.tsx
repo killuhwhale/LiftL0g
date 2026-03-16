@@ -1,4 +1,4 @@
-import React, { FunctionComponent } from "react";
+import React, { FunctionComponent, memo, useCallback } from "react";
 import { useTheme } from "styled-components/native";
 import {
   TSCaptionText,
@@ -28,14 +28,14 @@ const WorkoutGroupGridItem: FunctionComponent<{
 }> = (props) => {
   const theme = useTheme();
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     router.push({
       pathname: "/WorkoutScreen",
       params: {
         id: props.card.id,
       },
     });
-  };
+  }, [props.card.id]);
 
   return (
     <View
@@ -126,4 +126,4 @@ const WorkoutGroupGridItem: FunctionComponent<{
   );
 };
 
-export default WorkoutGroupGridItem;
+export default memo(WorkoutGroupGridItem);

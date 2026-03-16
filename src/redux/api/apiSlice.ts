@@ -964,6 +964,10 @@ export const apiSlice = createApi({
       },
       providesTags: ["AD_UNITS"],
     }),
+
+    ping: builder.query({
+      query: () => ({ url: "ping/" }),
+    }),
   }),
 });
 
@@ -1048,5 +1052,6 @@ export const {
 
   useGetDailySnapshotQuery,
   useGetAdUnitsQuery,
+  useLazyPingQuery,
   // usesTagLabelsGroupsForUserByDateRangeQuery,
 } = apiSlice;
