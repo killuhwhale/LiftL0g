@@ -12,6 +12,7 @@ import {
   WorkoutItemProps,
   WorkoutNameProps,
 } from "../Cards/types";
+import { dateFormat } from "@/src/utils/algos";
 
 // const NUM_WEEKS = 1;
 const NUM_WEEKS = 4;
@@ -125,7 +126,7 @@ export function useGenerate531Template() {
           owner_id: ownerId,
           owned_by_class: false,
           title: `Week ${week} - ${dayName}`,
-          for_date: forDate.toISOString(),
+          for_date: dateFormat(forDate),
           caption: `${dayName} - Week ${week}`,
           is_template: true,
           template_name: TEMPLATE_NAMES[0],

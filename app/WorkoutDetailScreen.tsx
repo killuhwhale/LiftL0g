@@ -4,7 +4,6 @@ import {
   CalcWorkoutStats,
   Container,
   displayJList,
-  formatLongDate,
   WORKOUT_TYPES,
   WORKOUTITEM_HEIGHT,
   WORKOUTITEM_WIDTH,
@@ -29,6 +28,7 @@ import WorkoutItemPreviewHorizontalList from "@/src/app_components/Cards/Workout
 import { useTheme } from "styled-components/native";
 import { WorkoutMaxProps } from "./WorkoutItemMaxes";
 import { ItemStringDisplayList } from "@/src/app_components/WorkoutItems/ItemStringDisplayList";
+import { formatLongWorkoutDate } from "@/src/utils/algos";
 
 const ScreenContainer = styled(Container)`
   background-color: ${(props) => props.theme.palette.backgroundColor};
@@ -142,7 +142,7 @@ const WorkoutDetailScreen: FunctionComponent = () => {
 
         <TSDateText textStyles={{ padding: 6 }}>
           {for_date
-            ? formatLongDate(new Date(for_date))
+            ? formatLongWorkoutDate(for_date)
             : "Unsure which date this is for..."}
         </TSDateText>
       </View>

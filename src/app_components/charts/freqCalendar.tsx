@@ -9,7 +9,7 @@ import { RectProps } from "react-native-svg/lib/typescript/elements/Rect";
 import { TSParagrapghText } from "../Text/Text";
 import { Container, SCREEN_WIDTH, lightenHexColor } from "../shared";
 import { WorkoutCardProps, WorkoutGroupProps } from "../Cards/types";
-import { dateFormat } from "@/src/utils/algos";
+import { dateFormat, formatWorkoutDate } from "@/src/utils/algos";
 
 const ScreenContainer = styled(Container)`
   background-color: ${(props) => props.theme.palette.backgroundColor};
@@ -36,7 +36,7 @@ const frequencyData = (workoutGroups: WorkoutGroupProps[]): FreqDataProps[] => {
     if (workoutGroup.completed_workouts?.length) {
       _workouts = workoutGroup.completed_workouts;
     }
-    const dateVal = dateFormat(new Date(workoutGroup.for_date));
+    const dateVal = formatWorkoutDate(workoutGroup.for_date);
     if (!rawData[dateVal]) {
       rawData[dateVal] = 1;
     } else {

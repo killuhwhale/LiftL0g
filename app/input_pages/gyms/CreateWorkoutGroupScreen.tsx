@@ -157,6 +157,7 @@ const CreateWorkoutGroupScreen: FunctionComponent = () => {
     data.append("title", title);
     data.append("caption", caption);
     data.append("for_date", dateFormat(forDate));
+    data.append("creation_source", "manual");
     // data.append("media_ids", []);
     // if (files && files.length) {
     //   files.forEach((file) =>

@@ -455,7 +455,7 @@ export default function TemplateWorkoutsScreen() {
     useGetProfileViewQuery("", {});
 
   const {
-    data: groups,
+    currentData: groups,
     isLoading: groupsLoading,
     isFetching: groupsFetching,
     refetch,

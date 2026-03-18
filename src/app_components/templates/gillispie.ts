@@ -6,6 +6,7 @@ import {
   TEMPLATE_NAMES,
 } from "../shared";
 import { AnyWorkoutItem, WorkoutNameProps } from "../Cards/types";
+import { dateFormat } from "@/src/utils/algos";
 
 // ——— 8-week scheme for main lifts ———
 const ADV_WEEK_SCHEMES: Record<number, [number, number, number][]> = {
@@ -190,7 +191,7 @@ export function useGillispieTemplate() {
           owner_id: ownerId,
           owned_by_class: false,
           title: `Week ${week} - ${dayName}`,
-          for_date: forDate.toISOString(),
+          for_date: dateFormat(forDate),
           caption: `${dayName} • Week ${week}`,
           is_template: true,
           template_name: TEMPLATE_NAMES[1],

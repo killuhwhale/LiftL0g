@@ -38,12 +38,48 @@ export const dateFormat = (dd: Date) => {
   const day = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${month}-${day}`;
 };
-export const dateFormatDayOfWeek = (dd: Date) => {
-  // return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+
+const workoutDateParts = (dd: string | Date) => {
+  if (typeof dd === "string") {
+    const [year, month, day] = dd.split("T")[0].split("-").map(Number);
+    const utcDate = new Date(Date.UTC(year, month - 1, day));
+    return {
+      year,
+      monthIndex: month - 1,
+      day,
+      dayOfWeek: utcDate.getUTCDay(),
+    };
+  }
+
   const d = new Date(dd);
-  return `${DAYSOFWEEK[d.getDay()]} ${
-    MONTHS[d.getMonth()]
-  } ${d.getDate()}, ${d.getFullYear()}`;
+  return {
+    year: d.getFullYear(),
+    monthIndex: d.getMonth(),
+    day: d.getDate(),
+    dayOfWeek: d.getDay(),
+  };
+};
+
+export const parseWorkoutDateToPickerDate = (dd: string | Date) => {
+  const { year, monthIndex, day } = workoutDateParts(dd);
+  return new Date(year, monthIndex, day);
+};
+
+export const formatWorkoutDate = (dd: string | Date) => {
+  const { year, monthIndex, day } = workoutDateParts(dd);
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(
+    day
+  ).padStart(2, "0")}`;
+};
+
+export const formatLongWorkoutDate = (dd: string | Date) => {
+  const { year, monthIndex, day } = workoutDateParts(dd);
+  return `${MONTHS[monthIndex]} ${day}, ${year}`;
+};
+
+export const dateFormatDayOfWeek = (dd: string | Date) => {
+  const { year, monthIndex, day, dayOfWeek } = workoutDateParts(dd);
+  return `${DAYSOFWEEK[dayOfWeek]} ${MONTHS[monthIndex]} ${day}, ${year}`;
 };
 
 export const jListToNumStr = (jsonListStr: string) => {

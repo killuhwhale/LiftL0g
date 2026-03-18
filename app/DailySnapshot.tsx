@@ -16,11 +16,12 @@ import {
 
 import BannerAddMembership from "@/src/app_components/ads/BannerAd";
 import ItemString from "@/src/app_components/WorkoutItems/ItemString";
-import { CalcWorkoutStats, formatLongDate } from "../src/app_components/shared";
+import { CalcWorkoutStats } from "../src/app_components/shared";
 import { StatsPanel } from "@/src/app_components/Stats/StatsPanel";
 import { ScrollView } from "react-native-gesture-handler";
 
 import EmojiScore from "@/src/app_components/snapshots/emojiScore";
+import { formatLongWorkoutDate } from "@/src/utils/algos";
 
 const DailySnapshotScreen: FunctionComponent = () => {
   const theme = useTheme();
@@ -105,7 +106,7 @@ const DailySnapshotScreen: FunctionComponent = () => {
             </View>
             <View style={{ flex: 1, justifyContent: "center" }}>
               <TSCaptionText textStyles={{ textAlign: "center" }}>
-                {formatLongDate(new Date(workoutGroups[0].for_date))}
+                {formatLongWorkoutDate(workoutGroups[0].for_date)}
               </TSCaptionText>
             </View>
           </View>

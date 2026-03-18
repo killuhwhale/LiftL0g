@@ -192,6 +192,7 @@ export interface WorkoutGroupCardProps {
   id: number;
   title: string;
   caption: string;
+  creation_source?: "manual" | "template" | "ai";
   owner_id?: string; // For workoutgroud
   owned_by_class?: boolean; // For workoutgroud
   user_id?: string; // For completeworkoutgroud
@@ -216,6 +217,7 @@ export interface WorkoutGroupProps {
   id: number;
   title: string;
   caption: string;
+  creation_source?: "manual" | "template" | "ai";
   user_owner_id?: string; // When owned_by_class = True, this represents the user ID of the owner of the Gym.
   owner_id: string;
   owned_by_class: boolean;
