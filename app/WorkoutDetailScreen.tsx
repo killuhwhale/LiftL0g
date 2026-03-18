@@ -1,84 +1,219 @@
-import React, { FunctionComponent } from "react";
+import React, { FunctionComponent, useState } from "react";
 import styled from "styled-components/native";
 import {
-  CalcWorkoutStats,
   Container,
   displayJList,
   WORKOUT_TYPES,
-  WORKOUTITEM_HEIGHT,
-  WORKOUTITEM_WIDTH,
+  DISTANCE_UNITS,
+  DURATION_UNITS,
 } from "../src/app_components/shared";
 import {
   TSCaptionText,
+  TSListTitleText,
   TSParagrapghText,
   TSTitleText,
   TSDateText,
   TSSnippetText,
 } from "../src/app_components/Text/Text";
-
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 import { StatsPanel } from "../src/app_components/Stats/StatsPanel";
 import BannerAddMembership from "../src/app_components/ads/BannerAd";
 import { useLocalSearchParams } from "expo-router";
-import {
-  useGetUserWorkoutMaxesQuery,
-  useGetWorkoutByIDQuery,
-} from "@/src/redux/api/apiSlice";
-import WorkoutItemPreviewHorizontalList from "@/src/app_components/Cards/WorkoutItemPreviewHorizontalList";
+import { useGetWorkoutByIDQuery } from "@/src/redux/api/apiSlice";
 import { useTheme } from "styled-components/native";
-import { WorkoutMaxProps } from "./WorkoutItemMaxes";
-import { ItemStringDisplayList } from "@/src/app_components/WorkoutItems/ItemStringDisplayList";
-import { formatLongWorkoutDate } from "@/src/utils/algos";
+import { AnyWorkoutItem } from "@/src/app_components/Cards/types";
+import { COLORSPALETTE, formatLongWorkoutDate } from "@/src/utils/algos";
+import Icon from "react-native-vector-icons/Ionicons";
 
 const ScreenContainer = styled(Container)`
   background-color: ${(props) => props.theme.palette.backgroundColor};
-  justify-content: space-between;
+  justify-content: flex-start;
   width: 100%;
   padding: 16px;
 `;
 
-/**
- *
- * @param schemeRounds
- * @param schemeType
- * @param items
- * @returns
- *
- * [{name: {primary: "lower"},...}, {},....]
- *
- * TAGS = {
- *  "lower": {
- *      totalReps: 10,
-        totalLbs: 10,
-        totalKgs: 10,
- *  },
- * }
- *
- *
- */
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- *  totalReps: 0,
-    totalLbs: 0,
-    totalKgs: 0,
+function buildMetricLine(item: AnyWorkoutItem, schemeType: number): string {
+  const setsPrefix = schemeType === 0 && item.sets > 1 ? `${item.sets} × ` : "";
+  if (item.reps !== "[0]")
+    return `${setsPrefix}${displayJList(item.reps)} Reps`;
+  if (item.distance !== "[0]")
+    return `${setsPrefix}${displayJList(item.distance)} ${DISTANCE_UNITS[item.distance_unit]}`;
+  if (item.duration !== "[0]")
+    return `${setsPrefix}${displayJList(item.duration)} ${DURATION_UNITS[item.duration_unit]}`;
+  return "";
+}
 
-    // Total duration seconds
-    totalTime: 0,
-    totalKgSec: 0,
-    totalLbSec: 0,
+function buildWeightLine(item: AnyWorkoutItem): string {
+  try {
+    const weights = JSON.parse(item.weights);
+    if (!weights.length || weights[0] === 0) return "";
+    const w = displayJList(item.weights);
+    if (item.weight_unit === "%") return `@ ${w}% of ${item.percent_of}`;
+    return `@ ${w} ${item.weight_unit}`;
+  } catch {
+    return "";
+  }
+}
 
-    // Total Distance Meters
-    totalDistanceM: 0,
-    totalKgM: 0,
-    totalLbM: 0,
-*/
+// ── ChecklistItem ─────────────────────────────────────────────────────────────
+
+const ChecklistItem: FunctionComponent<{
+  item: AnyWorkoutItem;
+  schemeType: number;
+  checked: boolean;
+  onToggle: () => void;
+}> = ({ item, schemeType, checked, onToggle }) => {
+  const theme = useTheme();
+  const metricLine = buildMetricLine(item, schemeType);
+  const weightLine = buildWeightLine(item);
+  const isSuperset = schemeType === 0 && item.ssid >= 0;
+  const ssColor = isSuperset ? COLORSPALETTE[item.ssid] : undefined;
+
+  return (
+    <TouchableOpacity onPress={onToggle} activeOpacity={0.7}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 12,
+          paddingHorizontal: 4,
+          opacity: checked ? 0.4 : 1,
+        }}
+      >
+        {/* Superset left border */}
+        {isSuperset && (
+          <View
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 3,
+              backgroundColor: ssColor,
+              borderRadius: 2,
+            }}
+          />
+        )}
+
+        {/* Checkbox icon */}
+        <Icon
+          name={checked ? "checkmark-circle" : "ellipse-outline"}
+          color={checked ? theme.palette.AWE_Green : theme.palette.text}
+          style={{ fontSize: 26, marginRight: 14, marginLeft: isSuperset ? 8 : 0 }}
+        />
+
+        {/* Exercise details */}
+        <View style={{ flex: 1 }}>
+          <TSListTitleText
+            textStyles={{
+              textDecorationLine: checked ? "line-through" : "none",
+            }}
+          >
+            {item.name.name}
+          </TSListTitleText>
+
+          {metricLine ? (
+            <TSCaptionText>{metricLine}</TSCaptionText>
+          ) : null}
+
+          {weightLine ? (
+            <TSCaptionText>{weightLine}</TSCaptionText>
+          ) : null}
+
+          {item.constant ? (
+            <TSCaptionText>per round</TSCaptionText>
+          ) : null}
+
+          {item.pause_duration > 0 ? (
+            <TSCaptionText>Hold: {item.pause_duration}s</TSCaptionText>
+          ) : null}
+
+          {item.rest_duration > 0 ? (
+            <TSCaptionText>
+              Rest: {item.rest_duration} {DURATION_UNITS[item.rest_duration_unit]}
+            </TSCaptionText>
+          ) : null}
+
+          {item.penalty ? (
+            <TSCaptionText
+              textStyles={{ color: theme.palette.AWE_Red ?? "#ef4444" }}
+            >
+              Penalty: {item.penalty}
+            </TSCaptionText>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Row separator */}
+      <View
+        style={{
+          height: 1,
+          backgroundColor: theme.palette.text,
+          opacity: 0.08,
+          marginLeft: 44,
+        }}
+      />
+    </TouchableOpacity>
+  );
+};
+
+// ── MasterCheckboxRow ─────────────────────────────────────────────────────────
+
+const MasterCheckboxRow: FunctionComponent<{
+  total: number;
+  checkedCount: number;
+  onToggleAll: () => void;
+}> = ({ total, checkedCount, onToggleAll }) => {
+  const theme = useTheme();
+  const allChecked = checkedCount === total;
+  const someChecked = checkedCount > 0 && !allChecked;
+
+  const iconName = allChecked
+    ? "checkmark-circle"
+    : someChecked
+    ? "remove-circle-outline"
+    : "ellipse-outline";
+
+  return (
+    <TouchableOpacity onPress={onToggleAll} activeOpacity={0.7}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.palette.text,
+          marginBottom: 4,
+          opacity: 0.9,
+        }}
+      >
+        <Icon
+          name={iconName}
+          color={allChecked ? theme.palette.AWE_Green : theme.palette.text}
+          style={{ fontSize: 24, marginRight: 14 }}
+        />
+        <TSSnippetText>
+          {checkedCount} / {total} complete
+        </TSSnippetText>
+        <View style={{ flex: 1 }} />
+        <TSCaptionText
+          textStyles={{ color: theme.palette.AWE_Green }}
+        >
+          {allChecked ? "Deselect All" : "Select All"}
+        </TSCaptionText>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 
 const WorkoutDetailScreen: FunctionComponent = () => {
-  const params = useLocalSearchParams(); // returns string or string array, cannot serialize much....
+  const params = useLocalSearchParams();
   const theme = useTheme();
-  // TODO() Build or find query from APISlice to get workout items for this workout....
 
-  // Thank goodness for type safety...
   const {
     id,
     title: _title,
@@ -95,105 +230,138 @@ const WorkoutDetailScreen: FunctionComponent = () => {
   const scheme_rounds = _scheme_rounds as string;
   const scheme_type = parseInt(_scheme_type as string);
   const instruction = _instruction as string;
-
   const for_date = _for_date as string;
-  const ownedByClass = parseInt(_ownedByClass as string);
 
   const {
     data: workout,
     isLoading,
     isSuccess,
-    isError,
-    error: errorWorkoutByID,
   } = useGetWorkoutByIDQuery(id);
 
-  const tags = workout?.stats?.tags ? workout.stats.tags : {};
-  const names = workout?.stats?.items ? workout.stats.items : {};
+  const items: AnyWorkoutItem[] =
+    isSuccess && !isLoading ? workout.workout_items : [];
+
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+
+  const toggle = (id: number) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const toggleAll = () => {
+    if (checked.size === items.length) {
+      setChecked(new Set());
+    } else {
+      setChecked(new Set(items.map((i) => i.id)));
+    }
+  };
+
+  const tags = workout?.stats?.tags ?? {};
+  const names = workout?.stats?.items ?? {};
+
+  const validRounds =
+    scheme_rounds?.length > 0 && !scheme_rounds.includes("undefined");
+  const schemePillLabel = `${WORKOUT_TYPES[scheme_type] ?? ""}${
+    validRounds ? `  ·  ${displayJList(scheme_rounds)}` : ""
+  }`;
 
   return (
     <ScreenContainer>
       <BannerAddMembership />
 
-      <View
-        style={{
-          justifyContent: "flex-end",
-          width: "100%",
-          flexDirection: "row",
-          marginVertical: 2,
-        }}
+      <ScrollView
+        style={{ flex: 1, width: "100%" }}
+        showsVerticalScrollIndicator={false}
       >
-        <TSSnippetText textStyles={{ color: theme.palette.accent }}>
-          {isSuccess && !isLoading
-            ? `Exercises (${workout.workout_items.length})`
-            : "no items"}
-        </TSSnippetText>
-      </View>
+        {/* ── Header ── */}
+        <View style={{ marginBottom: 16 }}>
+          {/* Title row */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              marginBottom: 4,
+            }}
+          >
+            <TSTitleText textStyles={{ flex: 1, marginRight: 8 }}>
+              {title?.length > 0 ? title : "Untitled workout"}
+            </TSTitleText>
 
-      <View style={{ marginVertical: 6, width: "100%" }}>
-        <TSTitleText>
-          {title.length < 1 ? "Title here... (you didnt give a title)" : title}
-        </TSTitleText>
+            {/* Exercises count badge */}
+            <TSSnippetText
+              textStyles={{ color: theme.palette.accent, marginTop: 4 }}
+            >
+              {isSuccess && !isLoading
+                ? `Exercises (${workout.workout_items.length})`
+                : "—"}
+            </TSSnippetText>
+          </View>
 
-        <TSCaptionText textStyles={{ padding: 6 }}>
-          {desc.length < 1
-            ? "Description here... (you didnt give a description)"
-            : desc}
-        </TSCaptionText>
+          {/* Scheme pill */}
+          <View
+            style={{
+              alignSelf: "flex-start",
+              borderWidth: 1,
+              borderColor: theme.palette.accent,
+              borderRadius: 12,
+              paddingHorizontal: 10,
+              paddingVertical: 3,
+              marginBottom: 8,
+            }}
+          >
+            <TSCaptionText>{schemePillLabel}</TSCaptionText>
+          </View>
 
-        <TSDateText textStyles={{ padding: 6 }}>
-          {for_date
-            ? formatLongWorkoutDate(for_date)
-            : "Unsure which date this is for..."}
-        </TSDateText>
-      </View>
+          {desc?.length > 0 && (
+            <TSParagrapghText textStyles={{ marginBottom: 4 }}>
+              {desc}
+            </TSParagrapghText>
+          )}
 
-      <View style={{ marginVertical: 12, width: "100%" }}>
-        <StatsPanel tags={tags} names={names} />
-      </View>
-
-      <View
-        style={{
-          justifyContent: "center",
-          width: "100%",
-          marginVertical: 12,
-        }}
-      >
-        <View style={{ marginTop: 8, padding: 6 }}>
-          <TSParagrapghText>
-            Type: {WORKOUT_TYPES[scheme_type]}{" "}
-            {scheme_rounds.length > 0 &&
-            scheme_rounds.indexOf("undefined") == -1
-              ? displayJList(scheme_rounds)
-              : ""}
-          </TSParagrapghText>
+          <TSDateText>
+            {for_date
+              ? formatLongWorkoutDate(for_date)
+              : "Date unknown"}
+          </TSDateText>
         </View>
 
-        {!isLoading && isSuccess ? (
-          // <WorkoutItemPreviewHorizontalList
-          //   testID={""}
-          //   data={workout.workout_items}
-          //   schemeType={scheme_type}
-          //   itemWidth={WORKOUTITEM_WIDTH}
-          //   itemHeight={WORKOUTITEM_HEIGHT}
-          //   ownedByClass={ownedByClass == 1 ? true : false}
-          // />
-          <View>
-            {instruction && instruction !== "undefined" ? (
-              <TSSnippetText textStyles={{ padding: 6 }}>
+        {/* ── Checklist ── */}
+        {isSuccess && !isLoading && (
+          <View style={{ width: "100%", marginBottom: 24 }}>
+            {instruction && instruction !== "undefined" && (
+              <TSCaptionText
+                textStyles={{ marginBottom: 12, fontStyle: "italic" }}
+              >
                 {instruction}
-              </TSSnippetText>
-            ) : (
-              <></>
+              </TSCaptionText>
             )}
-            <ItemStringDisplayList
-              items={workout.workout_items}
-              schemeType={scheme_type}
+
+            <MasterCheckboxRow
+              total={items.length}
+              checkedCount={checked.size}
+              onToggleAll={toggleAll}
             />
+
+            {items.map((item) => (
+              <ChecklistItem
+                key={item.id}
+                item={item}
+                schemeType={scheme_type}
+                checked={checked.has(item.id)}
+                onToggle={() => toggle(item.id)}
+              />
+            ))}
           </View>
-        ) : (
-          <></>
         )}
-      </View>
+
+        {/* ── Stats (bottom) ── */}
+        <View style={{ marginBottom: 32 }}>
+          <StatsPanel tags={tags} names={names} />
+        </View>
+      </ScrollView>
     </ScreenContainer>
   );
 };

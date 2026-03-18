@@ -1,21 +1,15 @@
 import React, { FunctionComponent, useState } from "react";
-import { router, useNavigation } from "expo-router";
+import { router } from "expo-router";
 import { TouchableHighlight, View } from "react-native";
 import { useTheme } from "styled-components/native";
 
-import {
-  AnyWorkoutItem,
-  WorkoutDualItemProps,
-  WorkoutItemProps,
-} from "../Cards/types";
+import { AnyWorkoutItem } from "../Cards/types";
 import {
   displayJList,
   DISTANCE_UNITS,
   DURATION_UNITS,
-  SCREEN_HEIGHT,
-  shuffle,
 } from "../shared";
-import { TSCaptionText, TSInputTextSm } from "../Text/Text";
+import { TSCaptionText } from "../Text/Text";
 import Icon from "react-native-vector-icons/Ionicons";
 
 import LinearGradient from "react-native-linear-gradient";
@@ -26,29 +20,9 @@ export const isDual = (item: any) => {
   return item.penalty !== undefined;
 };
 
-function recordedInfo(
-  key: string,
-  item: AnyWorkoutItem,
-  ownedByClass: boolean
-): string {
-  if (key === "duration") {
-    return isDual(item) && !ownedByClass
-      ? `(${displayJList(item[`r_${key}`])} ${
-          DURATION_UNITS[item[`r_duration_unit`]]
-        })`
-      : "";
-  } else if (key === "distance") {
-    return isDual(item) && !ownedByClass
-      ? `(${displayJList(item[`r_${key}`])} ${
-          DISTANCE_UNITS[item[`r_distance_unit`]]
-        })`
-      : "";
-  }
-  return isDual(item) && !ownedByClass
-    ? `(${displayJList(item[`r_${key}`])}) Reps`
-    : "";
-}
+const recordedTextColor = "#f0abfc";
 
+// Displays the rest period for an item, using recorded values when applicable.
 const WorkoutItemRest: FunctionComponent<{
   item: AnyWorkoutItem;
   ownedByClass: boolean;
@@ -60,174 +34,107 @@ const WorkoutItemRest: FunctionComponent<{
     (ownedByClass ? item.rest_duration_unit : item["r_rest_duration_unit"]) ??
     item.rest_duration_unit;
 
-  return (
-    <TSCaptionText textStyles={{ alignSelf: "center" }}>
-      {restDuration > 0
-        ? `Rest: ${restDuration} ${DURATION_UNITS[restDurationUnit]}`
-        : ""}
+  return restDuration > 0 ? (
+    <TSCaptionText textStyles={{ alignSelf: "center", fontSize: 9 }}>
+      {`Rest: ${restDuration} ${DURATION_UNITS[restDurationUnit]}`}
     </TSCaptionText>
-  );
+  ) : null;
 };
 
-const recordedTextColor = "#f0abfc";
-
-const WorkoutItemWeights: FunctionComponent<{
-  item: AnyWorkoutItem;
-}> = ({ item }) => {
-  const weights = item.weights;
-  const rWeights = item.r_weights ?? "[]";
-
-  const weightUnit = item.weight_unit;
-  const rWeightUnit = item.r_weight_unit;
-
-  const percentOf = item.percent_of;
-  const rPercentOf = item.r_percent_of;
-
-  // console.log(
-  //   "WorkoutItemWeights:  ",
-  //   item.name.name,
-  //   typeof rWeights,
-  //   rWeightUnit,
-  //   rPercentOf
-  // );
-
-  const theme = useTheme();
-  const w = displayJList(weights);
-  const rw = displayJList(rWeights);
-  const has_record = [item.r_reps, item.r_distance, item.r_duration].indexOf(
-    "[0]"
-  );
-  return (
-    <View
-      style={{
-        flex: 1,
-        flexDirection: "row",
-        width: "100%",
-        justifyContent: "center",
-      }}
-    >
-      <TSCaptionText
-        textStyles={{
-          color: theme.palette.text,
-          fontSize: 9,
-        }}
-      >
-        {w ? (
-          ` @ ${w}${
-            weightUnit === "%"
-              ? ` % of ${percentOf}`
-              : weights != "[]"
-              ? `${weightUnit}`
-              : ""
-          } `
-        ) : (
-          <></>
-        )}
-
-        {/* {weightUnit === "%" ? percentOf : ""} */}
-      </TSCaptionText>
-
-      <TSCaptionText
-        textStyles={{
-          color: recordedTextColor,
-          fontSize: 9,
-        }}
-      >
-        {rw && rPercentOf && rWeightUnit ? (
-          ` @ ${rw}${
-            rWeightUnit === "%"
-              ? ` % of ${rPercentOf}`
-              : rWeights != "[]"
-              ? `${rWeightUnit}`
-              : ""
-          } `
-        ) : has_record ? (
-          <></>
-        ) : (
-          <View
-            style={{
-              flex: 1,
-              flexDirection: "column",
-              justifyContent: "flex-start",
-            }}
-          >
-            <TSInputTextSm textStyles={{ fontSize: 6 }}>No </TSInputTextSm>
-            <TSInputTextSm textStyles={{ fontSize: 6 }}>Weight</TSInputTextSm>
-          </View>
-        )}
-      </TSCaptionText>
-    </View>
-  );
-};
-
-const WORKOUT_NAME_ICONS = [
-  "american-football-outline",
-  "barbell-outline",
-  "baseball-sharp",
-  "basketball-sharp",
-  "bicycle-sharp",
-  "flask-outline",
-  "football-outline",
-  "game-controller-outline",
-  "globe-outline",
-  "nutrition-outline",
-  "paw-outline",
-  "pizza",
-  "pulse-outline",
-];
-shuffle(WORKOUT_NAME_ICONS);
-const WorkoutItemRepsDurDistance: FunctionComponent<{
+// Renders planned metric + weight on one line, recorded counterpart in purple below.
+// Sets prefix ("3 ×") is merged into the metric line for STANDARD scheme.
+const CombinedMetricRow: FunctionComponent<{
   item: AnyWorkoutItem;
   ownedByClass: boolean;
   schemeType: number;
 }> = ({ item, ownedByClass, schemeType }) => {
-  // if (item.name.name === "Hill Sprints") {
-  //   console.log("Displaying item: ", schemeType, item, item.distance !== "[0]");
-  // }
+  const theme = useTheme();
+  const showRecorded = isDual(item) && !ownedByClass;
+  const setsPrefix =
+    schemeType === 0 && item.sets > 1 ? `${item.sets} × ` : "";
+
+  // --- Planned metric text ---
+  let metricText = "";
+  let recordedMetricText = "";
+
+  if (item.reps !== "[0]") {
+    metricText = `${setsPrefix}${displayJList(item.reps)} Reps`;
+    if (showRecorded && item.r_reps && item.r_reps !== "[0]") {
+      recordedMetricText = `(${displayJList(item.r_reps)}) Reps`;
+    }
+  } else if (item.distance !== "[0]") {
+    metricText = `${setsPrefix}${displayJList(item.distance)} ${DISTANCE_UNITS[item.distance_unit]}`;
+    if (showRecorded && item.r_distance && item.r_distance !== "[0]") {
+      recordedMetricText = `(${displayJList(item.r_distance)}) ${
+        DISTANCE_UNITS[item.r_distance_unit ?? item.distance_unit]
+      }`;
+    }
+  } else if (item.duration !== "[0]") {
+    metricText = `${setsPrefix}${displayJList(item.duration)} ${DURATION_UNITS[item.duration_unit]}`;
+    if (showRecorded && item.r_duration && item.r_duration !== "[0]") {
+      recordedMetricText = `(${displayJList(item.r_duration)}) ${
+        DURATION_UNITS[item.r_duration_unit ?? item.duration_unit]
+      }`;
+    }
+  }
+
+  if (item.constant && metricText) metricText += " /round";
+
+  // --- Planned weight ---
+  const w = displayJList(item.weights);
+  const hasPlannedWeight =
+    w && item.weights !== "[]" && item.weights !== "[0]";
+  const plannedWeightStr = hasPlannedWeight
+    ? item.weight_unit === "%"
+      ? ` @ ${w}% of ${item.percent_of}`
+      : ` @ ${w}${item.weight_unit}`
+    : "";
+
+  // --- Recorded weight ---
+  const rw = displayJList(item.r_weights ?? "[]");
+  const hasRecordedWeight =
+    showRecorded &&
+    rw &&
+    item.r_weights !== "[]" &&
+    item.r_weights !== "[0]" &&
+    item.r_weight_unit;
+  const recordedWeightStr = hasRecordedWeight
+    ? item.r_weight_unit === "%"
+      ? ` @ ${rw}% of ${item.r_percent_of}`
+      : ` @ ${rw}${item.r_weight_unit}`
+    : "";
+
+  if (!metricText && !recordedMetricText) return null;
 
   return (
-    <View
-      style={{
-        flex: 1,
-        flexDirection: "row",
-        justifyContent: "center",
-        width: "100%",
-      }}
-    >
-      {item.reps !== "[0]" ? (
-        <>
-          <TSCaptionText>{displayJList(item.reps)} Reps </TSCaptionText>
+    <View style={{ width: "100%", alignItems: "center" }}>
+      {/* Planned: metric stacked above weight */}
+      <TSCaptionText textStyles={{ textAlign: "center" }}>
+        {metricText}
+      </TSCaptionText>
+      {plannedWeightStr ? (
+        <TSCaptionText
+          textStyles={{ fontSize: 9, color: theme.palette.text, textAlign: "center" }}
+        >
+          {plannedWeightStr}
+        </TSCaptionText>
+      ) : null}
 
-          <TSCaptionText textStyles={{ color: recordedTextColor }}>
-            {recordedInfo("reps", item, ownedByClass)}
-          </TSCaptionText>
-        </>
-      ) : item.distance !== "[0]" ? (
-        <>
-          <TSCaptionText>
-            {displayJList(item.distance)} {DISTANCE_UNITS[item.distance_unit]}{" "}
-          </TSCaptionText>
-
-          <TSCaptionText textStyles={{ color: recordedTextColor }}>
-            {recordedInfo("distance", item, ownedByClass)}
-          </TSCaptionText>
-        </>
-      ) : item.duration !== "[0]" ? (
-        <>
-          <TSCaptionText>
-            {displayJList(item.duration)} {` `}
-            {DURATION_UNITS[item.duration_unit]}
-            {` `}
-          </TSCaptionText>
-          <TSCaptionText textStyles={{ color: recordedTextColor }}>
-            {recordedInfo("duration", item, ownedByClass)}
-          </TSCaptionText>
-        </>
-      ) : (
-        ""
-      )}
-
-      {item.constant ? <TSCaptionText> per round</TSCaptionText> : <></>}
+      {/* Recorded: metric stacked above weight, in purple */}
+      {recordedMetricText ? (
+        <TSCaptionText
+          textStyles={{ color: recordedTextColor, textAlign: "center" }}
+        >
+          {recordedMetricText}
+        </TSCaptionText>
+      ) : null}
+      {recordedWeightStr ? (
+        <TSCaptionText
+          textStyles={{ color: recordedTextColor, fontSize: 9, textAlign: "center" }}
+        >
+          {recordedWeightStr}
+        </TSCaptionText>
+      ) : null}
     </View>
   );
 };
@@ -252,19 +159,15 @@ const WorkoutItemPanel: FunctionComponent<{
   maxUnit,
 }) => {
   const theme = useTheme();
-
   const [currentPenalty, setCurrentPenalty] = useState("");
   const [showAlert, setShowAlert] = useState(false);
 
-  let _item;
-  if (isDual(item)) {
-    _item = item as WorkoutItemProps;
-  } else {
-    _item = item as WorkoutDualItemProps;
-  }
+  const hasPenalty =
+    isDual(item) && item.penalty != null && item.penalty.length > 0;
+  const isSuperset = schemeType === 0 && item.ssid >= 0;
+  const ssColor = isSuperset ? COLORSPALETTE[item.ssid] : undefined;
 
   const navToWorkoutNameDetail = () => {
-    console.log("Navigating with props:", item);
     router.push({
       pathname: "/WorkoutNameDetailScreen",
       params: {
@@ -279,212 +182,134 @@ const WorkoutItemPanel: FunctionComponent<{
       },
     });
   };
-  const itemMax = `(${maxValue}${maxUnit})`;
+
   return (
-    <LinearGradient
-      // colors={["#00000000", "#4682B4"]} // Steel BLUE
-      //   colors={['#00000000', '#87CEEB']} // Sky Blue
-      //   colors={['#00000000', '#87CEFA']} // Baby BLUE
-      //   colors={['#00000000', '#B0E0E6']} // Powder BlLue
-      //   colors={['#00000000', '#7DF9FFAA']} // Electric Blue
-      // colors={["#00000000", "#40E0D0"]} // Turquoise
-      colors={["#00000000", theme.palette.AWE_Green]} //
-      // colors={['#00000000', '#F0F8FF']} // Alice BLUE
-      // colors={['#00000000', '#6495ED']} // Cornflower BLUE
-      // colors={['#00000000', '#000080']} // navy BLUE
-      // colors={['#00000000', '#4169E1']} // royal BLUE
-      start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={{
-        width: itemWidth,
-        minWidth: itemWidth,
-        height: itemHeight,
-        borderRadius: 8,
-        padding: 6,
-        marginRight: 8,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <View style={{ position: "absolute", top: 6, left: 6, flex: 1 }}>
-        <TSCaptionText>{idx}</TSCaptionText>
-      </View>
-      <View style={{ flex: 4, width: "100%" }}>
-        {isDual(_item) && _item.penalty.length > 0 ? (
+    <View style={{ position: "relative", marginRight: 8 }}>
+      {/* Colored left border for superset grouping */}
+      {isSuperset && (
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            backgroundColor: ssColor,
+            borderTopLeftRadius: 8,
+            borderBottomLeftRadius: 8,
+            zIndex: 2,
+          }}
+        />
+      )}
+
+      <LinearGradient
+        colors={["#00000000", theme.palette.AWE_Green]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={{
+          width: itemWidth,
+          minWidth: itemWidth,
+          height: itemHeight,
+          borderRadius: 8,
+          padding: 6,
+          paddingLeft: isSuperset ? 10 : 6,
+          justifyContent: "flex-start",
+          alignItems: "center",
+        }}
+      >
+        {/* ── Name row: [idx] [Name] [penalty icon | max value] ── */}
+        <View
+          style={{
+            width: "100%",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          {/* Index + optional SS badge */}
+          <View style={{ alignItems: "center", minWidth: 16 }}>
+            <TSCaptionText textStyles={{ fontSize: 8 }}>{idx}</TSCaptionText>
+            {isSuperset && (
+              <TSCaptionText textStyles={{ fontSize: 7, color: ssColor }}>
+                SS
+              </TSCaptionText>
+            )}
+          </View>
+
+          {/* Exercise name — always tappable to detail screen */}
           <TouchableHighlight
-            onPress={() => {
-              setCurrentPenalty(_item.penalty);
-              setShowAlert(true);
-            }}
-            style={{ width: "100%", height: "100%" }}
+            onPress={navToWorkoutNameDetail}
             underlayColor={theme.palette.transparent}
             activeOpacity={0.9}
+            style={{ flex: 1, alignItems: "center", paddingHorizontal: 4 }}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                width: "100%",
-                justifyContent: "center",
-              }}
-            >
-              <TSCaptionText textStyles={{ textAlign: "center" }}>
-                {_item.name.name}
-              </TSCaptionText>
-              <View
-                style={{
-                  alignItems: "center",
-                  justifyContent: "center",
-                  alignContent: "center",
-                  height: "100%",
-                  marginLeft: 6,
+            <TSCaptionText textStyles={{ textAlign: "center" }}>
+              {item.name.name}
+            </TSCaptionText>
+          </TouchableHighlight>
+
+          {/* Right slot: penalty warning OR max value */}
+          <View style={{ minWidth: 28, alignItems: "flex-end" }}>
+            {hasPenalty ? (
+              <TouchableHighlight
+                onPress={() => {
+                  setCurrentPenalty(item.penalty!);
+                  setShowAlert(true);
                 }}
+                underlayColor={theme.palette.transparent}
+                activeOpacity={0.9}
               >
                 <Icon
                   name="alert-circle-outline"
                   color={theme.palette.text}
-                  style={{ fontSize: 12 }}
+                  style={{ fontSize: 14 }}
                 />
-              </View>
-            </View>
-          </TouchableHighlight>
-        ) : (
-          <View style={{ flexDirection: "row", justifyContent: "center" }}>
-            <TSCaptionText textStyles={{ textAlign: "center" }}>
-              {_item.name.name}
-            </TSCaptionText>
-            <TSCaptionText
-              textStyles={{
-                textAlign: "center",
-                fontSize: 9,
-                color: theme.palette.AWE_Green,
-              }}
-            >
-              {" "}
-              {itemMax}
-            </TSCaptionText>
-          </View>
-        )}
-
-        {item.pause_duration > 0 ? (
-          <TSCaptionText textStyles={{ textAlign: "center" }}>
-            for: {item.pause_duration} s
-          </TSCaptionText>
-        ) : (
-          <></>
-        )}
-      </View>
-
-      <View
-        style={{
-          flex: 6,
-          width: "100%",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <TouchableHighlight
-          onPress={() => navToWorkoutNameDetail()}
-          style={{ width: "100%", height: "100%" }}
-          underlayColor={theme.palette.transparent}
-          activeOpacity={0.9}
-        >
-          <View
-            style={{
-              width: "100%",
-              alignItems: "center",
-              justifyContent: "center",
-              alignContent: "center",
-              height: "100%",
-            }}
-          >
-            <Icon
-              // name="reader"
-              name={WORKOUT_NAME_ICONS[(idx - 1) % WORKOUT_NAME_ICONS.length]}
-              onPress={navToWorkoutNameDetail}
-              color={
-                schemeType == 0 && item.ssid >= 0
-                  ? COLORSPALETTE[item.ssid]
-                  : theme.palette.text
-              }
-              style={{ fontSize: 35 }}
-            />
-
-            {schemeType == 0 && item.ssid >= 0 ? (
+              </TouchableHighlight>
+            ) : maxValue ? (
               <TSCaptionText
-                textStyles={{
-                  color: COLORSPALETTE[item.ssid],
-                  textAlign: "center",
-                  marginBottom: 6,
-                }}
+                textStyles={{ fontSize: 8, color: theme.palette.AWE_Green }}
               >
-                SS
+                {maxValue}
+                {maxUnit}
               </TSCaptionText>
-            ) : (
-              <></>
-            )}
+            ) : null}
           </View>
-        </TouchableHighlight>
-      </View>
+        </View>
 
-      {item.sets > 1 ? (
+        {/* ── Remaining content: distributed evenly in leftover space ── */}
         <View
           style={{
-            alignSelf: "center",
-            flex: 2,
+            flex: 1,
             width: "100%",
-            justifyContent: "center",
-            alignContent: "center",
+            justifyContent: "space-evenly",
             alignItems: "center",
           }}
         >
-          <TSCaptionText textStyles={{ textAlign: "center" }}>
-            {schemeType === 0 ? `${item.sets} x ` : ""}
-          </TSCaptionText>
-        </View>
-      ) : (
-        <></>
-      )}
+          {/* Pause duration with clock icon */}
+          {item.pause_duration > 0 && (
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Icon
+                name="time-outline"
+                color={theme.palette.text}
+                style={{ fontSize: 11 }}
+              />
+              <TSCaptionText textStyles={{ fontSize: 9, marginLeft: 3 }}>
+                {item.pause_duration}s hold
+              </TSCaptionText>
+            </View>
+          )}
 
-      <View
-        style={{
-          alignSelf: "center",
-          flex: 2,
-          width: "100%",
-          justifyContent: "center",
-          alignContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <WorkoutItemRepsDurDistance
-          item={item}
-          ownedByClass={ownedByClass}
-          schemeType={schemeType}
-        />
-      </View>
+          {/* Metric + weight (planned above, recorded below in purple) */}
+          <CombinedMetricRow
+            item={item}
+            ownedByClass={ownedByClass}
+            schemeType={schemeType}
+          />
 
-      <View
-        style={{
-          alignItems: "center",
-          justifyContent: "space-evenly",
-          flex: 4,
-          width: "100%",
-          flexDirection: "column",
-        }}
-      >
-        <WorkoutItemWeights
-          item={item}
-          ownedByClass={false}
-          showRecorded={false}
-        />
-        {/* <WorkoutItemWeights
-          item={item}
-          ownedByClass={false}
-          showRecorded={true}
-        /> */}
-        <View style={{ flex: 1 }}>
-          <WorkoutItemRest item={item} ownedByClass={false} />
+          {/* Rest period */}
+          <WorkoutItemRest item={item} ownedByClass={ownedByClass} />
         </View>
-      </View>
+      </LinearGradient>
 
       <PenaltyDisplayModal
         closeText="Close"
@@ -492,7 +317,7 @@ const WorkoutItemPanel: FunctionComponent<{
         modalVisible={showAlert}
         onRequestClose={() => setShowAlert(false)}
       />
-    </LinearGradient>
+    </View>
   );
 };
 
