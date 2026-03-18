@@ -100,10 +100,8 @@ const FreqCalendar: FunctionComponent<{
     <View
       style={{
         width: "100%",
-        marginBottom: 12,
-        paddingBottom: 12,
-        borderWidth: 1,
-        borderColor: theme.palette.text,
+        marginBottom: 4,
+        paddingBottom: 4,
       }}
     >
       <TSParagrapghText textStyles={{ marginLeft: 12, padding: 8 }}>

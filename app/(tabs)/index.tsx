@@ -2,166 +2,149 @@ import React, {
   FunctionComponent,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, TextInput, TouchableOpacity, View } from "react-native";
 import { useTheme } from "styled-components/native";
 import {
   WorkoutGroupCardProps,
   WorkoutGroupProps,
 } from "@/src/app_components/Cards/types";
 
-import FilterGrid from "@/src/app_components/Grids/FilterGrid";
 import { WorkoutGroupSquares } from "@/src/app_components/Grids/WorkoutGroups/WorkoutGroupSquares";
 import {
   useGetProfileViewQuery,
   useGetProfileWorkoutGroupsQuery,
   useSearchWorkoutGroupsQuery,
-  useLazyPingQuery,
 } from "@/src/redux/api/apiSlice";
 import {
   TSParagrapghText,
   TSCaptionText,
+  TSButtonText,
   TSInputTextSm,
 } from "@/src/app_components/Text/Text";
-import { RegularButton } from "@/src/app_components/Buttons/buttons";
 
 import Icon from "react-native-vector-icons/Ionicons";
 import BannerAddMembership from "@/src/app_components/ads/BannerAd";
 import { router } from "expo-router";
-import twrnc from "twrnc";
 import { TestIDs } from "@/src/utils/constants";
-import Input from "@/src/app_components/Input/input";
 import { debounce } from "@/src/utils/algos";
 import { useGenerate531Template } from "@/src/app_components/templates/fivethreeone";
-
-/** Must match backend!!!
- *
- * class WorkoutGroupPagination(PageNumberPagination):
-    page_size = 1
-
- */
 
 function workoutGroupsEqual(
   group1: WorkoutGroupCardProps[] | undefined,
   group2: WorkoutGroupCardProps[] | undefined
 ): boolean {
-  if (!Array.isArray(group1) || !Array.isArray(group2)) {
-    return group1 === group2;
-  }
-  if (group1.length !== group2.length) {
-    return false;
-  }
-
-  const idMap1 = new Map<number | string, boolean>();
-  for (const workout of group1) {
-    idMap1.set(workout.id, true);
-  }
-
-  for (const workout of group2) {
-    if (!idMap1.has(workout.id)) {
-      return false;
-    }
-  }
-
+  if (!Array.isArray(group1) || !Array.isArray(group2)) return group1 === group2;
+  if (group1.length !== group2.length) return false;
+  const idMap = new Map<number | string, boolean>();
+  for (const w of group1) idMap.set(w.id, true);
+  for (const w of group2) if (!idMap.has(w.id)) return false;
   return true;
 }
 
 const PAGE_SIZE = 20;
 
-const UserWorkoutsScreen: FunctionComponent = (props) => {
+// ─── Action Pill Button ───────────────────────────────────────────────────────
+
+const ActionPill: FunctionComponent<{
+  label: string;
+  icon: string;
+  onPress: () => void;
+  color?: string;
+  testID?: string;
+}> = ({ label, icon, onPress, color, testID }) => {
   const theme = useTheme();
+  const bg = color ?? theme.palette.AWE_Green;
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.75}
+      testID={testID}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 20,
+        backgroundColor: bg,
+        marginLeft: 8,
+      }}
+    >
+      <Icon
+        name={icon}
+        color={theme.palette.backgroundColor}
+        style={{ fontSize: 15, marginRight: 5 }}
+      />
+      <TSInputTextSm
+        textStyles={{
+          color: theme.palette.backgroundColor,
+          fontWeight: "700",
+          fontSize: 13,
+        }}
+      >
+        {label}
+      </TSInputTextSm>
+    </TouchableOpacity>
+  );
+};
 
-  const [pingLabel, setPingLabel] = useState("Ping Server");
-  const [triggerPing, { isFetching: isPinging }] = useLazyPingQuery();
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
-  const handlePing = async () => {
-    const result = await triggerPing(undefined);
-    if (result.data?.message) {
-      setPingLabel(result.data.message);
-    } else {
-      setPingLabel("Error :(");
-    }
-  };
+const UserWorkoutsScreen: FunctionComponent = () => {
+  const theme = useTheme();
 
   const [page, setPage] = useState(1);
   const {
     data: dataWG,
     isLoading: isLoadingWG,
-    isSuccess: isSuccessWG,
-    isError: isErrorWG,
-    error: errorWG,
   } = useGetProfileWorkoutGroupsQuery(page);
+
   const { five_3_1, isLoading: isTemplateLoading } = useGenerate531Template();
-  const [workouts, setWorkouts] = useState<WorkoutGroupProps[]>([]); // Recent works list
-  const maxPage = Math.ceil((dataWG?.count ? dataWG?.count : 1) / PAGE_SIZE);
+  const [workouts, setWorkouts] = useState<WorkoutGroupProps[]>([]);
+  const maxPage = Math.ceil((dataWG?.count ?? 1) / PAGE_SIZE);
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [searchTextDisplay, setSearchTextDisplay] = useState("");
-  const [searchResults, setSearchResults] = useState<WorkoutGroupProps[]>([]); // Search resutls
+  const [searchResults, setSearchResults] = useState<WorkoutGroupProps[]>([]);
 
-  const { data, isLoading, isSuccess, isError, error } =
-    useGetProfileViewQuery("");
+  const { data, isLoading } = useGetProfileViewQuery("");
 
-  const {
-    data: searchData,
-    isFetching: isFetchingSearch,
-    refetch: refetchSearch,
-  } = useSearchWorkoutGroupsQuery(
+  const { data: searchData } = useSearchWorkoutGroupsQuery(
     { query: searchText, userID: data?.user?.id },
     { skip: !isSearching || isLoading || !data?.user?.id }
   );
 
   const loadMore = () => {
     if (!isLoadingWG && dataWG?.next) {
-      console.log("Loading more: maxPage: ", maxPage, dataWG?.count, PAGE_SIZE);
       setPage(Math.min(maxPage, page + 1));
     }
   };
 
   const currentWorkoutGroupsRef = useRef<{ [key: number]: number }>({});
   useEffect(() => {
-    if (dataWG && dataWG?.results && dataWG?.results.length > 0) {
-      setWorkouts((prevWorkouts) => {
-        const newWorkouts: WorkoutGroupProps[] = [];
-
-        [...dataWG?.results].map((wgRes: WorkoutGroupProps) => {
-          if (!(wgRes.id in currentWorkoutGroupsRef.current)) {
-            newWorkouts.push(wgRes);
-            currentWorkoutGroupsRef.current[wgRes.id] = 1;
+    if (dataWG?.results?.length > 0) {
+      setWorkouts((prev) => {
+        const next: WorkoutGroupProps[] = [];
+        for (const wg of dataWG.results) {
+          if (!(wg.id in currentWorkoutGroupsRef.current)) {
+            next.push(wg);
+            currentWorkoutGroupsRef.current[wg.id] = 1;
           }
-
-          return wgRes;
-        });
-
-        return [...prevWorkouts, ...newWorkouts].sort((a, b) =>
-          a.for_date > b.for_date ? -1 : 1
-        );
+        }
+        const merged = [...prev];
+        for (const w of next) {
+          const idx = merged.findIndex((x) => x.for_date < w.for_date);
+          idx === -1 ? merged.push(w) : merged.splice(idx, 0, w);
+        }
+        return merged;
       });
     } else {
       setWorkouts([]);
     }
   }, [dataWG]);
-
-  const handleNavCreateWorkoutGroupScreen = () => {
-    console.log("Navigating to CreateWorkoutGroupScreen");
-    router.push({
-      pathname: "/input_pages/gyms/CreateWorkoutGroupScreen",
-      params: {
-        ownedByClass: "false",
-        ownerID: data.user.id as string,
-      },
-    });
-  };
-  const handleNavViewTemplateWorkoutScreen = () => {
-    console.log("Navigating to handleNavViewTemplateWorkoutScreen");
-    router.push({
-      pathname: "/TemplateWorkouts",
-    });
-  };
 
   useEffect(() => {
     if (isSearching && !workoutGroupsEqual(searchData, searchResults)) {
@@ -169,10 +152,6 @@ const UserWorkoutsScreen: FunctionComponent = (props) => {
     }
   }, [searchData]);
 
-  const listToRender = isSearching ? searchResults : workouts;
-  // console.log("listToRender: ", listToRender);
-
-  // Create a debounced filter function
   const debouncedSearch = useCallback(
     debounce((text: string) => {
       setSearchText(text);
@@ -186,7 +165,6 @@ const UserWorkoutsScreen: FunctionComponent = (props) => {
     [searchText]
   );
 
-  // Handle search input change
   const handleSearchChange = useCallback(
     (text: string) => {
       setSearchTextDisplay(text);
@@ -195,211 +173,238 @@ const UserWorkoutsScreen: FunctionComponent = (props) => {
     [debouncedSearch]
   );
 
+  const navNewWorkout = () => {
+    router.push({
+      pathname: "/input_pages/gyms/CreateWorkoutGroupScreen",
+      params: { ownedByClass: "false", ownerID: data?.user?.id as string },
+    });
+  };
+
+  const navTemplates = () => {
+    router.push({ pathname: "/TemplateWorkouts" });
+  };
+
+  const listToRender = isSearching ? searchResults : workouts;
+  const hasWorkouts = workouts.length > 0;
+  const isLoadingInitial = isLoadingWG || (dataWG?.count > 0 && !hasWorkouts);
+
   return (
     <View
       style={{
-        width: "100%",
-        height: "100%",
         flex: 1,
+        width: "100%",
         backgroundColor: theme.palette.backgroundColor,
       }}
     >
       <BannerAddMembership />
 
-      {/* Ping test button */}
-      <TouchableOpacity
-        onPress={handlePing}
-        disabled={isPinging}
-        style={{
-          margin: 8,
-          paddingVertical: 10,
-          paddingHorizontal: 16,
-          backgroundColor: theme.palette.AWE_Blue,
-          borderRadius: 8,
-          alignItems: "center",
-        }}
-      >
-        <TSInputTextSm textStyles={{ color: theme.palette.text }}>
-          {isPinging ? "..." : pingLabel}
-        </TSInputTextSm>
-      </TouchableOpacity>
-
+      {/* ── Header (title + actions + search) ──────────────────── */}
       <View
         style={{
-          width: "100%",
-          flexDirection: "row",
-          justifyContent: "flex-end",
-          paddingLeft: 8,
-          paddingTop: 8,
-          paddingRight: 8,
+          backgroundColor: theme.palette.darkGray,
+          paddingHorizontal: 16,
+          paddingTop: 10,
+          paddingBottom: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: `${theme.palette.lightGray}22`,
         }}
       >
-        <TouchableOpacity
-          activeOpacity={0.69}
-          onPress={handleNavCreateWorkoutGroupScreen}
+        {/* Title row */}
+        <View
           style={{
-            padding: 4,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 10,
           }}
         >
-          <View style={{ alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
             <View
               style={{
-                borderRadius: 8,
+                width: 3,
+                height: 18,
+                borderRadius: 2,
                 backgroundColor: theme.palette.AWE_Green,
-                padding: 4,
+                marginRight: 10,
               }}
-            >
-              <Icon
-                name="add"
-                testID={TestIDs.CreateWorkoutGroupScreenBtn.name()}
-                color={theme.palette.text}
-                style={{
-                  fontSize: 24,
-                }}
-              />
-            </View>
-            <TSInputTextSm textStyles={{ textAlign: "center" }}>
-              New Workout
-            </TSInputTextSm>
+            />
+            <TSButtonText textStyles={{ fontSize: 16, letterSpacing: 0.5 }}>
+              Workouts
+            </TSButtonText>
           </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          activeOpacity={0.69}
-          onPress={handleNavViewTemplateWorkoutScreen}
+
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <ActionPill
+              label="Templates"
+              icon="clipboard-outline"
+              onPress={navTemplates}
+              color={theme.palette.AWE_Blue}
+            />
+            <ActionPill
+              label="New Workout"
+              icon="add"
+              onPress={navNewWorkout}
+              color={theme.palette.AWE_Green}
+              testID={TestIDs.CreateWorkoutGroupScreenBtn.name()}
+            />
+          </View>
+        </View>
+
+        {/* Search row */}
+        <View
           style={{
-            padding: 4,
-            borderRadius: 12,
+            flexDirection: "row",
+            alignItems: "center",
+            height: 44,
+            backgroundColor: theme.palette.backgroundColor,
+            borderRadius: 10,
+            borderWidth: 2,
+            borderLeftColor: theme.palette.AWE_Yellow,
+            borderTopColor: theme.palette.AWE_Blue,
+            borderRightColor: theme.palette.AWE_Red,
+            borderBottomColor: theme.palette.AWE_Green,
+            paddingHorizontal: 10,
           }}
         >
-          <View style={{ alignItems: "center" }}>
-            <View
-              style={{
-                borderRadius: 8,
-                backgroundColor: theme.palette.AWE_Green,
-                padding: 4,
-              }}
-            >
-              <Icon
-                name="clipboard-outline"
-                testID={TestIDs.CreateWorkoutGroupScreenBtn.name()}
-                color={theme.palette.text}
-                style={{
-                  fontSize: 24,
-                }}
-              />
-            </View>
-            <TSInputTextSm textStyles={{ textAlign: "center" }}>
-              Templates
-            </TSInputTextSm>
-          </View>
-        </TouchableOpacity>
+          <Icon
+            name="search"
+            style={{ fontSize: 16, marginRight: 8 }}
+            color={theme.palette.lightGray}
+          />
+          <TextInput
+            value={searchTextDisplay}
+            onChangeText={handleSearchChange}
+            placeholder="Search workouts"
+            placeholderTextColor={theme.palette.lightGray}
+            style={{
+              flex: 1,
+              fontSize: 14,
+              color: theme.palette.text,
+              paddingVertical: 0,
+            }}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+        </View>
       </View>
 
-      {workouts.length ? (
-        <View style={{ padding: 12, height: "100%", width: "100%" }}>
-          <View style={{ flex: 15 }}>
-            <View style={{ flex: 1 }}>
-              <Input
-                onChangeText={handleSearchChange}
-                value={searchTextDisplay}
-                inputStyles={{ fontSize: 14 }}
-                focus={false}
-                containerStyle={{
-                  width: "100%",
-                  backgroundColor: theme.palette.backgroundColor,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderLeftColor: theme.palette.AWE_Yellow,
-                  borderTopColor: theme.palette.AWE_Blue,
-                  borderRightColor: theme.palette.AWE_Red,
-                  borderBottomColor: theme.palette.AWE_Green,
-                }}
-                leading={
-                  <Icon
-                    name="search"
-                    style={{ fontSize: 16 }}
-                    color={theme.palette.text}
-                  />
-                }
-                label=""
-                placeholder="Search workouts..."
-              />
-            </View>
-
-            <View style={{ flex: 10, marginBottom: 12 }}>
-              <WorkoutGroupSquares
-                data={listToRender}
-                loadMore={!isSearching ? loadMore : undefined}
-                extraProps={{}}
-              />
-            </View>
-          </View>
+      {/* ── Content Area ────────────────────────────────────────── */}
+      {hasWorkouts ? (
+        // Workout list
+        <View style={{ flex: 1, paddingHorizontal: 12, paddingTop: 4 }}>
+          <WorkoutGroupSquares
+            data={listToRender}
+            loadMore={!isSearching ? loadMore : undefined}
+            extraProps={{}}
+          />
         </View>
-      ) : isLoadingWG || dataWG?.count > 0 ? (
-        <View
-          style={{
-            flex: 10,
-            height: "100%",
-            width: "100%",
-            justifyContent: "center",
-          }}
-        >
-          <ActivityIndicator size="small" color={theme.palette.text} />
+      ) : isLoadingInitial ? (
+        // Loading
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="small" color={theme.palette.AWE_Green} />
         </View>
       ) : (
+        // Empty state
         <View
           style={{
-            flex: 60,
-            height: "100%",
-            width: "100%",
+            flex: 1,
             justifyContent: "center",
             alignItems: "center",
+            paddingHorizontal: 32,
           }}
         >
-          <TSCaptionText textStyles={{ textAlign: "center", marginBottom: 22 }}>
-            No workouts!
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: `${theme.palette.AWE_Green}22`,
+              borderWidth: 1.5,
+              borderColor: `${theme.palette.AWE_Green}55`,
+              justifyContent: "center",
+              alignItems: "center",
+              marginBottom: 16,
+            }}
+          >
+            <Icon
+              name="barbell-outline"
+              color={theme.palette.AWE_Green}
+              style={{ fontSize: 26 }}
+            />
+          </View>
+
+          <TSParagrapghText
+            textStyles={{ textAlign: "center", marginBottom: 6 }}
+          >
+            No workouts yet
+          </TSParagrapghText>
+          <TSCaptionText
+            textStyles={{
+              color: theme.palette.lightGray,
+              textAlign: "center",
+              marginBottom: 28,
+              lineHeight: 18,
+            }}
+          >
+            Log your first session or start from a template to hit the ground running.
           </TSCaptionText>
 
-          {data && !isLoading ? (
-            <View style={{ width: "50%", alignSelf: "center" }}>
-              <RegularButton
-                underlayColor="#cacaca30"
-                btnStyles={{
-                  backgroundColor: "#cacaca00",
-                  borderTopColor: "#cacaca92",
-                  borderBottomColor: "#cacaca92",
-                  borderWidth: 2,
-                  width: "100%",
-                }}
-                onPress={() => {
-                  router.push({
-                    pathname: "/input_pages/gyms/CreateWorkoutGroupScreen",
-                    params: {
-                      ownedByClass: "false",
-                      ownerID: data.user.id,
-                    },
-                  });
+          {data && !isLoading && (
+            <View style={{ width: "100%", alignItems: "center" }}>
+              {/* Primary CTA */}
+              <TouchableOpacity
+                onPress={navNewWorkout}
+                activeOpacity={0.8}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "80%",
+                  paddingVertical: 13,
+                  borderRadius: 12,
+                  backgroundColor: theme.palette.AWE_Green,
+                  marginBottom: 12,
                 }}
               >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    width: "100%",
-                  }}
+                <Icon
+                  name="add"
+                  color={theme.palette.backgroundColor}
+                  style={{ fontSize: 20, marginRight: 8 }}
+                />
+                <TSButtonText
+                  textStyles={{ color: theme.palette.backgroundColor, fontSize: 15 }}
                 >
-                  <Icon
-                    name="add"
-                    color={theme.palette.text}
-                    style={{ fontSize: 32, marginRight: 16 }}
-                  />
-                  <TSParagrapghText>New workout</TSParagrapghText>
-                </View>
-              </RegularButton>
+                  New Workout
+                </TSButtonText>
+              </TouchableOpacity>
+
+              {/* Secondary CTA */}
+              <TouchableOpacity
+                onPress={navTemplates}
+                activeOpacity={0.8}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "80%",
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  borderWidth: 1.5,
+                  borderColor: `${theme.palette.lightGray}55`,
+                }}
+              >
+                <Icon
+                  name="clipboard-outline"
+                  color={theme.palette.lightGray}
+                  style={{ fontSize: 18, marginRight: 8 }}
+                />
+                <TSButtonText
+                  textStyles={{ color: theme.palette.lightGray, fontSize: 15 }}
+                >
+                  Browse Templates
+                </TSButtonText>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <></>
           )}
         </View>
       )}

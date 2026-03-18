@@ -178,6 +178,7 @@ export const apiSlice = createApi({
     "DailySnapshot",
     "AppControl",
     "AD_UNITS",
+    "TOKEN_STATUS",
   ],
   endpoints: (builder) => ({
     appControlMembershipOn: builder.query({
@@ -968,6 +969,28 @@ export const apiSlice = createApi({
     ping: builder.query({
       query: () => ({ url: "ping/" }),
     }),
+
+    coachChat: builder.mutation({
+      query: (data) => ({
+        url: "ai/chat/",
+        method: "POST",
+        data,
+      }),
+    }),
+
+    getTokenStatus: builder.query({
+      query: (userId) => ({ url: `ai/token_status/?user_id=${userId}` }),
+      providesTags: ["TOKEN_STATUS"],
+    }),
+
+    purchaseTokens: builder.mutation({
+      query: (data) => ({
+        url: "ai/purchase_tokens/",
+        method: "POST",
+        data,
+      }),
+      invalidatesTags: ["TOKEN_STATUS"],
+    }),
   }),
 });
 
@@ -1053,5 +1076,8 @@ export const {
   useGetDailySnapshotQuery,
   useGetAdUnitsQuery,
   useLazyPingQuery,
+  useCoachChatMutation,
+  useGetTokenStatusQuery,
+  usePurchaseTokensMutation,
   // usesTagLabelsGroupsForUserByDateRangeQuery,
 } = apiSlice;

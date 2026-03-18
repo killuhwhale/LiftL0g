@@ -189,7 +189,15 @@ export function jsonCopy<T>(item: T): T {
   return JSON.parse(JSON.stringify(item));
 }
 
-export const TEMPLATE_NAMES = ["5_3_1", "GIL_CYCLE"];
+export const TEMPLATE_NAMES = [
+  "5_3_1",        // [0] Wendler 5/3/1
+  "GIL_CYCLE",    // [1] Gillespie
+  "PHUL",         // [2] Power Hypertrophy Upper Lower
+  "GZCLP",        // [3] GZCLP Linear Progression
+  "PPL",          // [4] Push Pull Legs
+  "TEXAS_METHOD", // [5] Texas Method
+  "SMOLOV_JR",    // [6] Smolov Jr.
+];
 
 export function fillTemplateWorkoutItems(
   rawItems: Array<{

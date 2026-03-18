@@ -92,6 +92,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="PersonalCoach"
+        options={{
+          title: "Coach",
+          tabBarLabelStyle: {
+            fontSize: FONTSIZE,
+            fontWeight: "bold",
+          },
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <Icon
+              size={ICONSIZE}
+              name={focused ? "person" : "person-outline"}
+              color={focused ? theme.palette.primary.main : color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="GymSearchScreen"
         options={{
           href: null, // Allows file to remain in (tabs) and be a route but not appear in the Tab Bar

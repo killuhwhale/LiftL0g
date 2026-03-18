@@ -1,9 +1,8 @@
 import React, { FunctionComponent, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 
-import Icon from "react-native-vector-icons/Ionicons";
 import { useTheme } from "styled-components/native";
-import { TSParagrapghText } from "../Text/Text";
+import { TSCaptionText, TSParagrapghText } from "../Text/Text";
 import { SCREEN_WIDTH, lightenHexColor } from "../shared";
 
 import { PieChart } from "react-native-chart-kit";
@@ -50,6 +49,63 @@ const pieData = (tags, metric, pieColors) => {
 
   return data;
 };
+
+// ─── Chip Toggle ─────────────────────────────────────────────────────────────
+
+type ChipToggleOption<T extends string> = { key: T; label: string };
+
+function ChipToggle<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: ChipToggleOption<T>[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        backgroundColor: theme.palette.darkGray,
+        borderRadius: 20,
+        padding: 3,
+      }}
+    >
+      {options.map((opt) => {
+        const active = value === opt.key;
+        return (
+          <TouchableOpacity
+            key={opt.key}
+            onPress={() => onChange(opt.key)}
+            activeOpacity={0.75}
+            style={{
+              paddingVertical: 5,
+              paddingHorizontal: 14,
+              borderRadius: 17,
+              backgroundColor: active ? theme.palette.AWE_Green : "transparent",
+            }}
+          >
+            <TSCaptionText
+              textStyles={{
+                color: active
+                  ? theme.palette.backgroundColor
+                  : theme.palette.lightGray,
+                fontWeight: active ? "700" : "400",
+                fontSize: 12,
+              }}
+            >
+              {opt.label}
+            </TSCaptionText>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── Chart ───────────────────────────────────────────────────────────────────
 
 const TotalsBarChart: FunctionComponent<{
   dataTypes: string[];
@@ -143,27 +199,40 @@ const TotalsBarChart: FunctionComponent<{
         paddingBottom: 12,
       }}
     >
-      <View style={{ width: "100%", flexDirection: "row" }}>
-        <TSParagrapghText>Totals</TSParagrapghText>
-      </View>
-      <View style={{ width: "100%", flexDirection: "row" }}>
-        <Icon
-          name="repeat"
-          color={theme.palette.text}
-          style={{ fontSize: 24, marginHorizontal: 8 }}
-          onPress={() => {
-            setShowTags(!showTags);
-          }}
-        />
-        <Icon
-          name="analytics"
-          color={theme.palette.text}
-          style={{ fontSize: 24, marginHorizontal: 8 }}
-          onPress={() => {
-            setShowAbsolute(!showAbsolute);
-          }}
+      {/* ── Controls row ──────────────────────────────────────── */}
+      <View
+        style={{
+          width: "100%",
+          flexDirection: "row",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
+          paddingHorizontal: 12,
+          marginBottom: 8,
+        }}
+      >
+        {/* Group toggle: Category vs Exercise */}
+        <ChipToggle
+          options={[
+            { key: "tags", label: "Category" },
+            { key: "names", label: "Exercise" },
+          ]}
+          value={showTags ? "tags" : "names"}
+          onChange={(v) => setShowTags(v === "tags")}
         />
 
+        {/* Value toggle: Share vs Total */}
+        <ChipToggle
+          options={[
+            { key: "share", label: "Share %" },
+            { key: "total", label: "Total" },
+          ]}
+          value={showAbsolute ? "total" : "share"}
+          onChange={(v) => setShowAbsolute(v === "total")}
+        />
+      </View>
+
+      <View style={{ paddingHorizontal: 12, marginBottom: 4 }}>
         <HorizontalPicker
           key={`barChartKey_${barDataFilteredDataTypes.length}`}
           data={barDataFilteredDataTypes}
