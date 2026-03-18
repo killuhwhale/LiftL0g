@@ -12,7 +12,6 @@ import {
   TSCaptionText,
   TSInputTextSm,
   TSParagrapghText,
-  TSSnippetText,
   TSTitleText,
 } from "@/src/app_components/Text/Text";
 import {
@@ -36,54 +35,19 @@ const PageContainer = styled(Container)`
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-const InfoRow: FunctionComponent<{
-  icon: string;
-  label: string;
-  value: string;
-}> = ({ icon, label, value }) => {
-  const theme = useTheme();
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "flex-start",
-        marginBottom: 16,
-        padding: 14,
-        backgroundColor: theme.palette.darkGray,
-        borderRadius: 12,
-      }}
-    >
-      <Icon
-        name={icon}
-        size={20}
-        color={theme.palette.AWE_Green}
-        style={{ marginRight: 12, marginTop: 2 }}
-      />
-      <View style={{ flex: 1 }}>
-        <TSCaptionText textStyles={{ color: theme.palette.gray, marginBottom: 2 }}>
-          {label}
-        </TSCaptionText>
-        <TSInputTextSm textStyles={{ color: theme.palette.text }}>
-          {value}
-        </TSInputTextSm>
-      </View>
-    </View>
-  );
-};
-
 const GoalChip: FunctionComponent<{ label: string }> = ({ label }) => {
   const theme = useTheme();
   return (
     <View
       style={{
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
         borderRadius: 20,
         backgroundColor: `${theme.palette.AWE_Green}33`,
         borderWidth: 1,
         borderColor: theme.palette.AWE_Green,
-        marginRight: 8,
-        marginBottom: 8,
+        marginRight: 6,
+        marginBottom: 6,
       }}
     >
       <TSCaptionText textStyles={{ color: theme.palette.AWE_Green }}>
@@ -216,255 +180,325 @@ const PersonalCoachScreen: FunctionComponent = () => {
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
       >
-        {/* Header */}
+        {/* Page title */}
+        <TSTitleText textStyles={{ marginTop: 16, marginBottom: 12 }}>
+          My Coach
+        </TSTitleText>
+
+        {/* ── Zone 1: Coach Identity Hero Card ─────────────────────────────── */}
         <View
           style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: 16,
-            marginBottom: 20,
+            padding: 16,
+            backgroundColor: theme.palette.darkGray,
+            borderRadius: 16,
+            marginBottom: 12,
           }}
         >
-          <TSTitleText>My Coach</TSTitleText>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {/* Memory button */}
-            <TouchableOpacity
-              onPress={handleOpenMemory}
+          <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+            {/* Avatar bubble */}
+            <View
               style={{
-                flexDirection: "row",
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                backgroundColor: `${theme.palette.AWE_Green}22`,
+                justifyContent: "center",
                 alignItems: "center",
-                padding: 8,
-                borderRadius: 8,
-                backgroundColor: theme.palette.darkGray,
+                marginRight: 12,
               }}
             >
               <Icon
-                name="analytics-outline"
-                size={16}
-                color={memory ? theme.palette.AWE_Green : theme.palette.text}
-                style={{ marginRight: 4 }}
+                name="person-circle-outline"
+                size={30}
+                color={theme.palette.AWE_Green}
               />
-              <TSCaptionText
-                textStyles={{
-                  color: memory ? theme.palette.AWE_Green : theme.palette.text,
-                }}
-              >
-                Memory
-              </TSCaptionText>
-              {/* Dot indicator when memory exists */}
-              {memory && (
-                <View
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: theme.palette.AWE_Green,
-                    marginLeft: 4,
-                  }}
-                />
-              )}
-            </TouchableOpacity>
+            </View>
 
-            {/* Edit profile button */}
+            {/* Coach type + goals */}
+            <View style={{ flex: 1 }}>
+              <TSCaptionText
+                textStyles={{ color: theme.palette.gray, marginBottom: 2 }}
+              >
+                Coach Type
+              </TSCaptionText>
+              <TSInputTextSm
+                textStyles={{ color: theme.palette.text, marginBottom: 8 }}
+              >
+                {profile.coachType}
+              </TSInputTextSm>
+              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                {profile.goals.map((g) => (
+                  <GoalChip key={g} label={g} />
+                ))}
+              </View>
+            </View>
+
+            {/* Edit button — inlined in hero card */}
             <TouchableOpacity
               onPress={handleEditProfile}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                padding: 8,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
                 borderRadius: 8,
-                backgroundColor: theme.palette.darkGray,
+                backgroundColor: theme.palette.backgroundColor,
               }}
             >
               <Icon
                 name="pencil-outline"
-                size={16}
+                size={13}
                 color={theme.palette.text}
                 style={{ marginRight: 4 }}
               />
-              <TSCaptionText>Edit</TSCaptionText>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Coach type */}
-        <InfoRow
-          icon="person-outline"
-          label="Coach Type"
-          value={profile.coachType}
-        />
-
-        {/* Goals */}
-        <View
-          style={{
-            marginBottom: 16,
-            padding: 14,
-            backgroundColor: theme.palette.darkGray,
-            borderRadius: 12,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-            <Icon
-              name="trophy-outline"
-              size={20}
-              color={theme.palette.AWE_Green}
-              style={{ marginRight: 12 }}
-            />
-            <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-              Goals
-            </TSCaptionText>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-            {profile.goals.map((g) => (
-              <GoalChip key={g} label={g} />
-            ))}
-          </View>
-        </View>
-
-        {/* Fitness background */}
-        <InfoRow
-          icon="barbell-outline"
-          label="Fitness Background"
-          value={profile.fitnessInfo}
-        />
-
-        {/* Excluded exercises */}
-        <View
-          style={{
-            marginBottom: 16,
-            padding: 14,
-            backgroundColor: theme.palette.darkGray,
-            borderRadius: 12,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 8,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Icon
-                name="ban-outline"
-                size={20}
-                color={theme.palette.AWE_Red ?? theme.palette.gray}
-                style={{ marginRight: 12 }}
-              />
-              <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-                Excluded Exercises
-              </TSCaptionText>
-            </View>
-            <TouchableOpacity onPress={handleEditProfile}>
-              <TSCaptionText textStyles={{ color: theme.palette.AWE_Green }}>
+              <TSCaptionText textStyles={{ color: theme.palette.text }}>
                 Edit
               </TSCaptionText>
             </TouchableOpacity>
           </View>
-
-          {profile.excludedExercises?.length > 0 ? (
-            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-              {profile.excludedExercises.map((ex) => (
-                <View
-                  key={ex}
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 20,
-                    backgroundColor: `${theme.palette.AWE_Red ?? "#ff4444"}22`,
-                    borderWidth: 1,
-                    borderColor: theme.palette.AWE_Red ?? theme.palette.gray,
-                    marginRight: 6,
-                    marginBottom: 6,
-                  }}
-                >
-                  <TSCaptionText
-                    textStyles={{ color: theme.palette.AWE_Red ?? theme.palette.gray }}
-                  >
-                    {ex}
-                  </TSCaptionText>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-              None — all exercises are fair game.
-            </TSCaptionText>
-          )}
         </View>
 
-        {/* Token status */}
-        {profile?.completedOnboarding && (
-          <TokenStatusBar userId={String(userData?.user?.id ?? "")} />
-        )}
+        {/* ── Zone 2: Primary CTAs ─────────────────────────────────────────── */}
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
+          {/* Generate Workout */}
+          <TouchableOpacity
+            onPress={handleGenerateWorkout}
+            style={{
+              flex: 1,
+              paddingVertical: 18,
+              borderRadius: 14,
+              backgroundColor: theme.palette.AWE_Green,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon
+              name="sparkles-outline"
+              size={22}
+              color={theme.palette.white}
+              style={{ marginBottom: 6 }}
+            />
+            <TSCaptionText
+              textStyles={{
+                color: theme.palette.white,
+                fontWeight: "700",
+                textAlign: "center",
+              }}
+            >
+              {"Generate\nWorkout"}
+            </TSCaptionText>
+          </TouchableOpacity>
 
-        {/* Divider */}
+          {/* Chat with Coach */}
+          <TouchableOpacity
+            onPress={handleOpenChat}
+            style={{
+              flex: 1,
+              paddingVertical: 18,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: theme.palette.AWE_Blue,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon
+              name="chatbubble-outline"
+              size={22}
+              color={theme.palette.AWE_Blue}
+              style={{ marginBottom: 6 }}
+            />
+            <TSCaptionText
+              textStyles={{
+                color: theme.palette.AWE_Blue,
+                textAlign: "center",
+              }}
+            >
+              {"Chat with\nCoach"}
+            </TSCaptionText>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Zone 3: Compact Profile Details ──────────────────────────────── */}
         <View
           style={{
-            height: 1,
             backgroundColor: theme.palette.darkGray,
-            marginVertical: 20,
-          }}
-        />
-
-        {/* Generate Workout */}
-        <TSSnippetText
-          textStyles={{ color: theme.palette.gray, marginBottom: 12 }}
-        >
-          Your coach will generate a workout based on your profile, recent
-          workouts, and current 1RMs.
-        </TSSnippetText>
-
-        <TouchableOpacity
-          onPress={handleGenerateWorkout}
-          style={{
-            paddingVertical: 16,
-            borderRadius: 12,
-            backgroundColor: theme.palette.AWE_Green,
-            alignItems: "center",
-            flexDirection: "row",
-            justifyContent: "center",
+            borderRadius: 16,
             marginBottom: 12,
+            overflow: "hidden",
           }}
         >
-          <Icon
-            name="sparkles-outline"
-            size={20}
-            color={theme.palette.white}
-            style={{ marginRight: 8 }}
-          />
-          <TSParagrapghText
-            textStyles={{ color: theme.palette.white, fontWeight: "700" }}
+          {/* Fitness Background row */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              padding: 14,
+            }}
           >
-            Generate My Next Workout
-          </TSParagrapghText>
-        </TouchableOpacity>
+            <Icon
+              name="barbell-outline"
+              size={18}
+              color={theme.palette.AWE_Green}
+              style={{ marginRight: 10, marginTop: 2 }}
+            />
+            <View style={{ flex: 1 }}>
+              <TSCaptionText
+                textStyles={{ color: theme.palette.gray, marginBottom: 2 }}
+              >
+                Background
+              </TSCaptionText>
+              <TSInputTextSm textStyles={{ color: theme.palette.text }}>
+                {profile.fitnessInfo}
+              </TSInputTextSm>
+            </View>
+          </View>
 
-        {/* Chat */}
-        <TouchableOpacity
-          onPress={handleOpenChat}
-          style={{
-            paddingVertical: 16,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: theme.palette.AWE_Blue,
-            alignItems: "center",
-            flexDirection: "row",
-            justifyContent: "center",
-          }}
-        >
-          <Icon
-            name="chatbubble-outline"
-            size={20}
-            color={theme.palette.AWE_Blue}
-            style={{ marginRight: 8 }}
+          {/* Intra-card separator */}
+          <View
+            style={{
+              height: 1,
+              backgroundColor: theme.palette.backgroundColor,
+              marginHorizontal: 14,
+            }}
           />
-          <TSParagrapghText textStyles={{ color: theme.palette.AWE_Blue }}>
-            Chat with Coach
-          </TSParagrapghText>
-        </TouchableOpacity>
+
+          {/* Excluded Exercises row */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              padding: 14,
+            }}
+          >
+            <Icon
+              name="ban-outline"
+              size={18}
+              color={theme.palette.AWE_Red ?? theme.palette.gray}
+              style={{ marginRight: 10, marginTop: 2 }}
+            />
+            <View style={{ flex: 1 }}>
+              <TSCaptionText
+                textStyles={{ color: theme.palette.gray, marginBottom: 6 }}
+              >
+                Excluded Exercises
+              </TSCaptionText>
+              {profile.excludedExercises?.length > 0 ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  {profile.excludedExercises.map((ex) => (
+                    <View
+                      key={ex}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        borderRadius: 20,
+                        backgroundColor: `${theme.palette.AWE_Red ?? "#ff4444"}22`,
+                        borderWidth: 1,
+                        borderColor: theme.palette.AWE_Red ?? theme.palette.gray,
+                        marginRight: 6,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <TSCaptionText
+                        textStyles={{
+                          color: theme.palette.AWE_Red ?? theme.palette.gray,
+                        }}
+                      >
+                        {ex}
+                      </TSCaptionText>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <TSCaptionText textStyles={{ color: theme.palette.gray }}>
+                  None — all exercises are fair game.
+                </TSCaptionText>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* ── Zone 4: Memory + Token Status ────────────────────────────────── */}
+        {profile?.completedOnboarding && (
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {/* Memory card */}
+            <TouchableOpacity
+              onPress={handleOpenMemory}
+              style={{
+                flex: 1,
+                padding: 14,
+                borderRadius: 16,
+                backgroundColor: theme.palette.darkGray,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon
+                name="chevron-forward"
+                size={11}
+                color={theme.palette.gray}
+                style={{ position: "absolute", top: 8, right: 8 }}
+              />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 4,
+                }}
+              >
+                <Icon
+                  name="analytics-outline"
+                  size={20}
+                  color={memory ? theme.palette.AWE_Green : theme.palette.text}
+                  style={{ marginRight: memory ? 4 : 0 }}
+                />
+                {memory && (
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: theme.palette.AWE_Green,
+                    }}
+                  />
+                )}
+              </View>
+              <TSCaptionText
+                textStyles={{
+                  color: memory ? theme.palette.AWE_Green : theme.palette.text,
+                  textAlign: "center",
+                  marginBottom: 2,
+                }}
+              >
+                Memory
+              </TSCaptionText>
+              <TSCaptionText
+                textStyles={{ color: theme.palette.gray, textAlign: "center" }}
+              >
+                {memory ? "Active" : "No data yet"}
+              </TSCaptionText>
+            </TouchableOpacity>
+
+            {/* Token status card */}
+            <View
+              style={{
+                flex: 2,
+                padding: 14,
+                borderRadius: 16,
+                backgroundColor: theme.palette.darkGray,
+                justifyContent: "center",
+              }}
+            >
+              <Icon
+                name="chevron-forward"
+                size={11}
+                color={theme.palette.gray}
+                style={{ position: "absolute", top: 8, right: 8 }}
+              />
+              <TokenStatusBar userId={String(userData?.user?.id ?? "")} />
+            </View>
+          </View>
+        )}
       </ScrollView>
     </PageContainer>
   );
