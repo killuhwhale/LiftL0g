@@ -2,25 +2,15 @@ import React, { FunctionComponent, memo, useCallback } from "react";
 import { useTheme } from "styled-components/native";
 import {
   TSCaptionText,
-  TSDateText,
-  TSParagrapghText,
   TSSnippetText,
   XSmallText,
 } from "@/src/app_components/Text/Text";
 import { router } from "expo-router";
 import { WorkoutGroupCardProps } from "@/src/app_components/Cards/types";
-import { Image, TouchableHighlight, View } from "react-native";
-import LinearGradient from "react-native-linear-gradient";
+import { TouchableHighlight, View } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import twrnc from "twrnc";
-import moc from "@/assets/bgs/moc.png";
 
-import { green } from "@/src/app_components/shared";
 import { dateFormatDayOfWeek } from "@/src/utils/algos";
-
-const startColor = twrnc.color("bg-stone-900");
-const endColor = twrnc.color("bg-teal-900");
-const textColor = twrnc.color("bg-teal-50");
 
 const SOURCE_META = {
   manual: { label: "Custom" },
@@ -34,129 +24,132 @@ const WorkoutGroupGridItem: FunctionComponent<{
 }> = (props) => {
   const theme = useTheme();
   const isCompleted = !!props.card.finished;
-  const accentColor = isCompleted
-    ? theme.palette.AWE_Green
-    : theme.palette.AWE_Blue;
   const sourceKey = props.card.creation_source ?? "manual";
   const sourceMeta = SOURCE_META[sourceKey] ?? SOURCE_META.manual;
-  const sourceChipColor =
+
+  // Color is driven by creation_source — gives each workout type a visual identity
+  const accentColor =
     sourceKey === "template"
       ? theme.palette.AWE_Yellow
       : sourceKey === "ai"
       ? theme.palette.AWE_Blue
-      : theme.palette.gray;
+      : theme.palette.AWE_Green;
 
   const handlePress = useCallback(() => {
     router.push({
       pathname: "/WorkoutScreen",
-      params: {
-        id: props.card.id,
-      },
+      params: { id: props.card.id },
     });
   }, [props.card.id]);
 
   return (
-    <View
-      style={{
-        flexDirection: "column",
-        margin: 8,
-      }}
+    <TouchableHighlight
+      onPress={handlePress}
+      underlayColor={`${accentColor}18`}
+      style={{ borderRadius: 12, marginHorizontal: 4, marginVertical: 5 }}
     >
-      <TouchableHighlight
-        style={{ borderRadius: 16 }}
-        underlayColor="transparent"
-        onPress={handlePress}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "stretch",
+          backgroundColor: theme.palette.darkGray,
+          borderRadius: 12,
+          overflow: "hidden",
+        }}
       >
-        <LinearGradient
-          colors={[startColor!, accentColor]}
-          start={{ x: 0.0, y: 0 }}
-          end={{ x: 0.9, y: 1 }}
-          style={{ flex: 1, borderRadius: 16 }}
+        {/* Left accent bar */}
+        <View
+          style={{
+            width: 4,
+            backgroundColor: accentColor,
+            borderTopLeftRadius: 12,
+            borderBottomLeftRadius: 12,
+          }}
+        />
+
+        {/* Main content */}
+        <View
+          style={{
+            flex: 1,
+            paddingVertical: 14,
+            paddingHorizontal: 14,
+          }}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
+          {/* Title */}
+          <TSSnippetText
+            numberOfLines={1}
+            textStyles={{ fontWeight: "700", fontSize: 15, marginBottom: 6 }}
           >
+            {props.card.title}
+          </TSSnippetText>
+
+          {/* Source chip + date */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <View
               style={{
-                backgroundColor: theme.palette.backgroundColor,
-                borderRadius: 16,
-                padding: 16,
-                margin: 8,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 6,
-                elevation: 4,
-                flexDirection: "row",
+                paddingHorizontal: 7,
+                paddingVertical: 2,
+                borderRadius: 999,
+                backgroundColor: `${accentColor}1A`,
+                borderWidth: 1,
+                borderColor: `${accentColor}44`,
+              }}
+            >
+              <XSmallText
+                textStyles={{ color: accentColor, fontWeight: "700", fontSize: 10 }}
+              >
+                {sourceMeta.label}
+              </XSmallText>
+            </View>
+
+            <TSCaptionText
+              textStyles={{ color: theme.palette.gray, fontSize: 12 }}
+            >
+              {dateFormatDayOfWeek(props.card.for_date)}
+            </TSCaptionText>
+          </View>
+        </View>
+
+        {/* Completion indicator */}
+        <View
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+            paddingRight: 16,
+            paddingLeft: 8,
+          }}
+        >
+          {isCompleted ? (
+            <View
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: `${theme.palette.AWE_Green}22`,
+                justifyContent: "center",
                 alignItems: "center",
               }}
             >
-              <Image
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 16,
-                  marginRight: 12,
-                }}
-                source={moc}
+              <Icon
+                name="checkmark"
+                size={16}
+                color={theme.palette.AWE_Green}
               />
-              <View style={{ flex: 1 }}>
-                <TSSnippetText
-                  numberOfLines={1}
-                  textStyles={{ fontWeight: "bold", fontSize: 16 }}
-                >
-                  {props.card.title}
-                </TSSnippetText>
-                <View
-                  style={{
-                    alignSelf: "flex-start",
-                    marginTop: 6,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    borderRadius: 999,
-                    backgroundColor: `${sourceChipColor}22`,
-                    borderWidth: 1,
-                    borderColor: `${sourceChipColor}55`,
-                  }}
-                >
-                  <XSmallText textStyles={{ color: sourceChipColor, fontWeight: "700" }}>
-                    {sourceMeta.label}
-                  </XSmallText>
-                </View>
-                <TSDateText
-                  numberOfLines={1}
-                  textStyles={{
-                    fontSize: 12,
-                    color: theme.palette.gray,
-                    marginTop: 6,
-                  }}
-                >
-                  {dateFormatDayOfWeek(props.card.for_date)}
-                </TSDateText>
-              </View>
-
-              {isCompleted ? (
-                <Icon
-                  name="checkmark-circle-sharp"
-                  size={24}
-                  color={accentColor}
-                />
-              ) : (
-                <Icon
-                  name="ellipse-outline"
-                  size={24}
-                  color={accentColor}
-                />
-              )}
             </View>
-          </View>
-        </LinearGradient>
-      </TouchableHighlight>
-    </View>
+          ) : (
+            <View
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: `${theme.palette.lightGray}44`,
+              }}
+            />
+          )}
+        </View>
+      </View>
+    </TouchableHighlight>
   );
 };
 

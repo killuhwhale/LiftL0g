@@ -1,7 +1,7 @@
 import MaskedView from "@react-native-masked-view/masked-view";
 import React, { FunctionComponent } from "react";
-import { StyleProp, TextStyle } from "react-native";
-import LinearGradient from "react-native-linear-gradient";
+import { StyleProp, TextStyle, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "styled-components/native";
 import { TSTitleText } from "../Text/Text";
 import { lightenHexColor } from "../shared";
@@ -55,18 +55,17 @@ const GradientText: FunctionComponent<GradientTextProps> = (props) => {
   return (
     <MaskedView
       maskElement={
-        <TSTitleText textStyles={props.textStyles}>{props.text}</TSTitleText>
+        <View style={{ backgroundColor: "transparent" }}>
+          <TSTitleText textStyles={props.textStyles}>{props.text}</TSTitleText>
+        </View>
       }
     >
       <LinearGradient
-        colors={props.reversed ? _COLORS.toReversed() : _COLORS}
+        colors={(props.reversed ? _COLORS.toReversed() : _COLORS) as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        angle={props.angle || 180}
-        angleCenter={{ x: 0.5, y: 0.5 }}
       >
-        <TSTitleText textStyles={[{ color: "#00000000" }, props.textStyles]}>
-          {" "}
+        <TSTitleText textStyles={[{ opacity: 0 }, props.textStyles]}>
           {props.text}
         </TSTitleText>
       </LinearGradient>

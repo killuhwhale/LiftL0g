@@ -240,20 +240,71 @@ const TotalsBarChart: FunctionComponent<{
         />
       </View>
 
-      <ScrollView horizontal={true} style={{ flex: 1, height: 200 }}>
-        <PieChart
-          backgroundColor="transparent"
-          paddingLeft="5"
-          data={PieData}
-          width={SCREEN_WIDTH}
-          height={200}
-          yAxisLabel=""
-          chartConfig={chartConfig}
-          accessor="total"
-          fromZero
-          absolute={showAbsolute}
-        />
-      </ScrollView>
+      <PieChart
+        backgroundColor="transparent"
+        paddingLeft="15"
+        data={PieData}
+        width={SCREEN_WIDTH}
+        height={220}
+        yAxisLabel=""
+        chartConfig={chartConfig}
+        accessor="total"
+        fromZero
+        absolute={showAbsolute}
+        hasLegend={false}
+      />
+
+      {/* Custom legend */}
+      {(() => {
+        const total = PieData.reduce((sum, item) => sum + item.total, 0);
+        return (
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              paddingHorizontal: 12,
+              marginTop: 8,
+            }}
+          >
+            {PieData.map((item) => (
+              <View
+                key={item.name}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  width: "50%",
+                  paddingVertical: 3,
+                  paddingRight: 8,
+                }}
+              >
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: item.color,
+                    marginRight: 6,
+                    flexShrink: 0,
+                  }}
+                />
+                <TSCaptionText
+                  textStyles={{ color: "#FFF", fontSize: 10, flexShrink: 1 }}
+                  numberOfLines={1}
+                >
+                  {item.name}{" "}
+                  <TSCaptionText
+                    textStyles={{ color: item.color, fontSize: 10 }}
+                  >
+                    {showAbsolute
+                      ? item.total
+                      : `${Math.round((item.total / total) * 100)}%`}
+                  </TSCaptionText>
+                </TSCaptionText>
+              </View>
+            ))}
+          </View>
+        );
+      })()}
     </View>
   );
 };

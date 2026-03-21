@@ -5,15 +5,13 @@ import {
   limitTextLength,
   mdFontSize,
 } from "@/src/app_components/shared";
-import { LargeText } from "@/src/app_components/Text/Text";
+import { TSCaptionText, TSTitleText } from "@/src/app_components/Text/Text";
 import React, {
   FunctionComponent,
-  useCallback,
   useEffect,
-  useState
+  useState,
 } from "react";
-import { ActivityIndicator, Image, View } from "react-native";
-import { Asset, launchImageLibrary } from "react-native-image-picker/src";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import styled from "styled-components/native";
 
@@ -34,90 +32,25 @@ const PageContainer = styled(Container)`
   justify-content: space-between;
   width: 100%;
 `;
-const Touchable = styled.TouchableHighlight`
-  height: 100%;
-  border-radius: 25px;
-`;
-
-const ImagePicker: FunctionComponent<{
-  setState(file: Asset): void;
-  title: string;
-}> = (props) => {
-  const theme = useTheme();
-  const pickFile = useCallback(async () => {
-    try {
-      const res = await launchImageLibrary({ mediaType: "mixed" });
-      console.log("DocuPicker res ", res);
-      if (res.errorCode) {
-        console.log("Pick file error", res.errorMessage);
-      } else if (res.assets) {
-        props.setState(res.assets[0]);
-      }
-    } catch (err) {
-      console.log("err picker", err);
-      throw err;
-    }
-  }, [props.title]);
-  return (
-    <View>
-      <RegularButton
-        onPress={pickFile}
-        btnStyles={{ backgroundColor: theme.palette.darkGray }}
-        text={props.title}
-      />
-    </View>
-  );
-};
 
 const CreateGymScreen: FunctionComponent = () => {
   const theme = useTheme();
   const router = useRouter();
-  // Access/ send actions
   const dispatch = useAppDispatch();
-  const [mainFile, setMainFile] = useState<{ [key: string]: any }>({});
-  const [logoFile, setLogoFile] = useState<{ [key: string]: any }>({});
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [createGym, { isLoading }] = useCreateGymMutation();
-
-  // Create gym class mutation
 
   const [isCreating, setIsCreating] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
 
   const _createGym = async () => {
-    console.log("Creatting gym: ", mainFile, logoFile, title, desc);
+    console.log("Creatting gym: ", title, desc);
     setIsCreating(true);
 
-    // Need to get file from the URI
     const data = new FormData();
     data.append("title", title);
     data.append("desc", desc);
-
-    if (mainFile.uri && mainFile.fileName && mainFile.type) {
-      data.append("main", {
-        uri: mainFile.uri,
-        name: mainFile.fileName,
-        type: mainFile.type,
-      });
-    }
-
-    if (logoFile.uri && logoFile.fileName && logoFile.type) {
-      data.append("logo", {
-        uri: logoFile.uri,
-        name: logoFile.fileName,
-        type: logoFile.type,
-      });
-    }
-
-    console.log("FOrmdata");
-    console.log("FOrmdata");
-    console.log("FOrmdata");
-    console.log("FOrmdata", data.getParts(), mainFile.fileName, mainFile.type);
-
-    // headers: {
-    //     'Content-Type': 'multipart/form-data; ',
-    //   },
 
     try {
       const gym = await createGym(data).unwrap();
@@ -131,7 +64,6 @@ const CreateGymScreen: FunctionComponent = () => {
       console.log("Error creating gym", err);
     }
     setIsCreating(false);
-    // TODO possibly dispatch to refresh data
   };
 
   const [showAd, setShowAd] = useState(false);
@@ -143,85 +75,90 @@ const CreateGymScreen: FunctionComponent = () => {
         .catch((err) => console.log("Error creating Gym: ", err));
     }
   }, [readyToCreate]);
+
+  const INPUT_STYLE = {
+    width: "100%",
+    backgroundColor: theme.palette.darkGray,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  };
+
   return (
     <PageContainer>
       <BannerAddMembership />
-      <LargeText textStyles={{ marginBottom: 8 }}>Create Gym</LargeText>
-      <View style={{ height: "100%", width: "100%" }}>
-        <View style={{ flex: 1 }}>
-          <View style={{ height: 35, marginBottom: 8 }}>
+      <ScrollView
+        style={{ flex: 1, width: "100%" }}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingTop: 24,
+          paddingBottom: 40,
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={{ width: "100%", maxWidth: 480, alignSelf: "center" }}>
+          <TSTitleText textStyles={{ textAlign: "center", marginBottom: 32 }}>
+            Create Gym
+          </TSTitleText>
+
+          <TSCaptionText textStyles={{ marginBottom: 6 }}>Title</TSCaptionText>
+          <View style={{ height: 48, marginBottom: 20 }}>
             <Input
               onChangeText={(t) => setTitle(limitTextLength(t, GymTitleLimit))}
               testID={TestIDs.GymTitleField.name()}
               value={title}
-              containerStyle={{
-                width: "100%",
-                backgroundColor: theme.palette.darkGray,
-                borderRadius: 8,
-                paddingHorizontal: 8,
-              }}
+              containerStyle={INPUT_STYLE}
               leading={
                 <Icon
-                  name="information-circle-outline"
+                  name="create-outline"
                   style={{ fontSize: mdFontSize }}
                   color={theme.palette.text}
                 />
               }
               label=""
-              placeholder="Title"
+              placeholder="Gym name"
             />
           </View>
-          <View style={{ height: 35, marginBottom: 8 }}>
+
+          <TSCaptionText textStyles={{ marginBottom: 6 }}>
+            Description
+          </TSCaptionText>
+          <View style={{ height: 48, marginBottom: 36 }}>
             <Input
               onChangeText={(t) => setDesc(limitTextLength(t, GymDescLimit))}
               value={desc}
               testID={TestIDs.GymDescField.name()}
-              containerStyle={{
-                width: "100%",
-                backgroundColor: theme.palette.darkGray,
-                borderRadius: 8,
-                paddingHorizontal: 8,
-              }}
+              containerStyle={INPUT_STYLE}
               leading={
                 <Icon
-                  name="information-circle-outline"
+                  name="document-text-outline"
                   style={{ fontSize: mdFontSize }}
                   color={theme.palette.text}
                 />
               }
               label=""
-              placeholder="Description"
+              placeholder="Short description"
             />
           </View>
 
-          <ImagePicker
-            setState={setMainFile.bind(this)}
-            title="Select Main Image"
-          />
-          <Image
-            source={{ uri: mainFile.uri }}
-            style={{ width: "100%", height: 100, resizeMode: "contain" }}
-          />
-          <ImagePicker setState={setLogoFile.bind(this)} title="Select Logo" />
-          <Image
-            source={{ uri: logoFile.uri }}
-            style={{ width: "100%", height: 100, resizeMode: "contain" }}
-          />
           {!isCreating ? (
             <>
               <RegularButton
-                onPress={() => {
-                  setShowAd(true);
+                onPress={() => setShowAd(true)}
+                btnStyles={{
+                  backgroundColor: theme.palette.primary.main,
+                  paddingVertical: 14,
+                  borderRadius: 16,
                 }}
-                btnStyles={{ backgroundColor: theme.palette.darkGray }}
                 text="Create"
               />
               <InterstitialAdMembership
                 testID={TestIDs.GymSubmitBtn.name()}
                 text="Create"
                 onClose={() => {
-                  setShowAd(false); // return to prev state.
-                  setReadyToCreate(true); // Trigger useEffect
+                  setShowAd(false);
+                  setReadyToCreate(true);
                 }}
                 show={showAd}
               />
@@ -230,7 +167,7 @@ const CreateGymScreen: FunctionComponent = () => {
             <ActivityIndicator size="small" color={theme.palette.text} />
           )}
         </View>
-      </View>
+      </ScrollView>
       <AlertModal
         closeText="Close"
         bodyText="Failed to create gym: gyms can only be created by members and are limited to 15 gyms with unique names."
