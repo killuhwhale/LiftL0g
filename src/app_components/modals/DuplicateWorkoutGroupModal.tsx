@@ -1,29 +1,31 @@
-import React, { FunctionComponent, useEffect, useState } from "react";
-
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { View, Pressable, StyleProp, ViewStyle, TouchableHighlight } from "react-native";
 import {
-  Keyboard,
-  Modal,
-  Platform,
-  StyleProp,
-  TouchableHighlight,
-  View,
-  ViewStyle,
-} from "react-native";
-
-import { LargeButton } from "../Buttons/buttons";
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+} from "@gorhom/bottom-sheet";
+import { useTheme } from "styled-components/native";
 import { TSCaptionText, TSSnippetText, TSTitleText } from "../Text/Text";
-import { centeredViewStyle, modalViewStyle } from "./modalStyles";
-import { useTheme } from "styled-components";
-import DatePicker from "react-native-date-picker";
 import {
   formatLongDate,
+  lightenHexColor,
   limitTextLength,
   mdFontSize,
   WorkoutGroupDescLimit,
   WorkoutGroupTitleLimit,
 } from "../shared";
-import Input from "../Input/input";
 import Icon from "react-native-vector-icons/Ionicons";
+import DatePicker from "react-native-date-picker";
 import { useDuplicateWorkoutGroupMutation } from "@/src/redux/api/apiSlice";
 import { WorkoutCardProps } from "../Cards/types";
 import { dateFormat } from "../charts/lineChart";
@@ -40,6 +42,8 @@ const DuplicateWorkoutGroupModal: FunctionComponent<{
   onDuplicateGroup: (groupID: number) => void;
 }> = (props) => {
   const theme = useTheme();
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ["68%"], []);
 
   const [dupError, setDupError] = useState("");
   const [title, setTitle] = useState("");
@@ -49,36 +53,14 @@ const DuplicateWorkoutGroupModal: FunctionComponent<{
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [duplicateWorkoutGroupMutation, { isLoading }] =
     useDuplicateWorkoutGroupMutation();
-  // Get workouts w/ their items
-  // Send all data to server and let it create everything
 
-  const duplicateWorkoutGroup = async () => {
-    const group_data = new FormData();
-
-    group_data.append("title", title);
-    group_data.append("for_date", dateFormat(forDate));
-    group_data.append("caption", caption);
-    group_data.append("owned_by_class", "f");
-    group_data.append("owner_id", props.owner_id);
-    console.log("Duplciate props.workouts: ", props.workouts);
-    group_data.append("workouts", JSON.stringify(props.workouts));
-
-    try {
-      const res = await duplicateWorkoutGroupMutation(group_data).unwrap();
-      console.log("Group duplicate res: ", res);
-
-      if ("id" in res) {
-        props.onDuplicateGroup(res.id);
-        props.onRequestClose();
-      }
-      if ("detail" in res) {
-        console.log("Alert, group not duplicated!");
-        setDupError("Error duplicating: daily workout creation limit reached.");
-      }
-    } catch (err) {
-      console.log("Error duplicating workout: ", err);
+  useEffect(() => {
+    if (props.modalVisible) {
+      sheetRef.current?.present();
+    } else {
+      sheetRef.current?.dismiss();
     }
-  };
+  }, [props.modalVisible]);
 
   useEffect(() => {
     setDupError("");
@@ -88,209 +70,242 @@ const DuplicateWorkoutGroupModal: FunctionComponent<{
     setShowDatePicker(false);
   }, [props.modalVisible]);
 
+  const renderBackdrop = useCallback(
+    (backdropProps: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...backdropProps}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.55}
+        pressBehavior="close"
+      />
+    ),
+    []
+  );
+
+  const duplicateWorkoutGroup = async () => {
+    const group_data = new FormData();
+    group_data.append("title", title);
+    group_data.append("for_date", dateFormat(forDate));
+    group_data.append("caption", caption);
+    group_data.append("owned_by_class", "f");
+    group_data.append("owner_id", props.owner_id);
+    group_data.append("workouts", JSON.stringify(props.workouts));
+
+    try {
+      const res = await duplicateWorkoutGroupMutation(group_data).unwrap();
+      if ("id" in res) {
+        props.onDuplicateGroup(res.id);
+        props.onRequestClose();
+      }
+      if ("detail" in res) {
+        setDupError("Error duplicating: daily workout creation limit reached.");
+      }
+    } catch (err) {
+      console.log("Error duplicating workout: ", err);
+    }
+  };
+
+  const inputBg = lightenHexColor(theme.palette.backgroundColor, 0.2);
+
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={props.modalVisible}
-      onRequestClose={() => props.onRequestClose()}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      onDismiss={props.onRequestClose}
+      backdropComponent={renderBackdrop}
+      keyboardBehavior="extend"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
+      backgroundStyle={{ backgroundColor: theme.palette.darkGray }}
+      handleIndicatorStyle={{
+        backgroundColor: lightenHexColor(theme.palette.lightGray, 0.3),
+        width: 40,
+      }}
     >
-      <View
-        style={[
-          {
-            flex: 1,
-            justifyContent: "flex-start",
-            alignItems: "center",
-            marginTop: 100,
-            backgroundColor: "#000000DD",
-          },
-        ]}
-        onTouchStart={() => {
-          Keyboard.dismiss();
-        }}
+      <BottomSheetScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <View
-          style={[
-            modalViewStyle.modalView,
-            {
-              backgroundColor: theme.palette.darkGray,
-              width: "80%",
-              height: "55%",
-            },
-            props.containerStyle,
-          ]}
-          onTouchStart={() => {
-            Keyboard.dismiss();
-          }}
-        >
+        {/* Header */}
+        <TSTitleText textStyles={{ textAlign: "center", marginBottom: 4, marginTop: 4 }}>
+          {props.modalText}
+        </TSTitleText>
+
+        {dupError ? (
           <View
-            style={{ flex: 1, width: "100%", height: "100%" }}
-            onTouchStart={() => {
-              Keyboard.dismiss();
+            style={{
+              backgroundColor: lightenHexColor(theme.palette.AWE_Red, 0.1),
+              borderRadius: 8,
+              padding: 10,
+              marginBottom: 14,
             }}
           >
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 6,
-                marginBottom: 12,
-                flex: 4,
-                width: "100%",
-              }}
-            >
-              {dupError ? (
-                <TSSnippetText
-                  textStyles={{
-                    textAlign: "center",
-                    marginBottom: 8,
-                    color: theme.palette.accent,
-                  }}
-                >
-                  {dupError}
-                </TSSnippetText>
-              ) : (
-                <></>
-              )}
-              <TSTitleText textStyles={{ textAlign: "center" }}>
-                {props.modalText}
-              </TSTitleText>
-            </View>
-
-            <View style={{ flex: 5 }}>
-              <View style={{ marginBottom: 15, height: 40 }}>
-                <Input
-                  placeholder="New Title"
-                  onChangeText={(t) => {
-                    setTitle(limitTextLength(t, WorkoutGroupTitleLimit));
-                    setTitleError("");
-                  }}
-                  value={title || ""}
-                  label="New Title"
-                  isError={titleError.length > 0}
-                  helperText={titleError}
-                  containerStyle={{
-                    width: "100%",
-                    backgroundColor: theme.palette.darkGray,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    borderWidth: 1,
-                    borderColor: theme.palette.text,
-                  }}
-                  leading={
-                    <Icon
-                      name="information-circle-outline"
-                      color={theme.palette.text}
-                      style={{ fontSize: mdFontSize }}
-                    />
-                  }
-                />
-              </View>
-              <View style={{ marginBottom: 15, height: 40 }}>
-                <Input
-                  placeholder="New Caption"
-                  onChangeText={(t) =>
-                    setCaption(limitTextLength(t, WorkoutGroupDescLimit))
-                  }
-                  value={caption || ""}
-                  label="New Caption"
-                  containerStyle={{
-                    width: "100%",
-                    backgroundColor: theme.palette.darkGray,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    borderWidth: 1,
-                    borderColor: theme.palette.text,
-                  }}
-                  leading={
-                    <Icon
-                      name="information-circle-outline"
-                      color={theme.palette.text}
-                      style={{ fontSize: mdFontSize }}
-                    />
-                  }
-                />
-              </View>
-
-              <View
-                style={{
-                  flexDirection: "row",
-                  height: 35,
-                  width: "100%",
-                  backgroundColor: theme.palette.darkGray,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: theme.palette.text,
-                }}
-              >
-                <TouchableHighlight
-                  style={{
-                    height: "100%",
-                    width: "100%",
-                    justifyContent: "center",
-                  }}
-                  onPress={() => setShowDatePicker(!showDatePicker)}
-                >
-                  <>
-                    <TSCaptionText
-                      textStyles={{ textAlign: "left", paddingLeft: 16 }}
-                    >
-                      For: {formatLongDate(forDate)}
-                    </TSCaptionText>
-                    <DatePicker
-                      date={forDate}
-                      mode="date"
-                      locale="en"
-                      theme="dark"
-                      modal={true}
-                      open={showDatePicker}
-                      onCancel={() => setShowDatePicker(false)}
-                      onConfirm={(date) => setForDate(date)}
-                      buttonColor={theme.palette.text}
-                      title={"For Date"}
-                    />
-                  </>
-                </TouchableHighlight>
-              </View>
-            </View>
-
-            <View
-              style={{
-                flex: 2,
-                flexDirection: "row",
-                width: "100%",
-                justifyContent: "space-around",
-                alignContent: "center",
-                alignItems: "center",
-                paddingVertical: 12,
-              }}
-            >
-              <LargeButton
-                onPress={props.onRequestClose}
-                btnStyles={{
-                  backgroundColor: "#DB4437",
-
-                  paddingVertical: 8,
-                }}
-                text={props.closeText}
-              />
-
-              <LargeButton
-                onPress={() => duplicateWorkoutGroup()}
-                btnStyles={{
-                  backgroundColor: theme.palette.primary.main,
-
-                  paddingVertical: 8,
-                }}
-                text={props.actionText}
-              />
-            </View>
+            <TSCaptionText textStyles={{ color: theme.palette.AWE_Red, textAlign: "center" }}>
+              {dupError}
+            </TSCaptionText>
           </View>
+        ) : null}
+
+        {/* Title input */}
+        <TSCaptionText
+          textStyles={{ marginBottom: 6, color: lightenHexColor(theme.palette.text, 0.6) }}
+        >
+          New Title
+        </TSCaptionText>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: inputBg,
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            height: 48,
+            marginBottom: 14,
+            borderWidth: titleError ? 1 : 0,
+            borderColor: theme.palette.AWE_Red,
+          }}
+        >
+          <Icon
+            name="information-circle-outline"
+            color={lightenHexColor(theme.palette.text, 0.4)}
+            style={{ fontSize: mdFontSize, marginRight: 8 }}
+          />
+          <BottomSheetTextInput
+            value={title}
+            onChangeText={(t) => {
+              setTitle(limitTextLength(t, WorkoutGroupTitleLimit));
+              setTitleError("");
+            }}
+            placeholder="New Title"
+            placeholderTextColor={lightenHexColor(theme.palette.text, 0.35)}
+            style={{ flex: 1, color: theme.palette.text, fontSize: 14 }}
+          />
         </View>
-      </View>
-    </Modal>
+
+        {/* Caption input */}
+        <TSCaptionText
+          textStyles={{ marginBottom: 6, color: lightenHexColor(theme.palette.text, 0.6) }}
+        >
+          Caption
+        </TSCaptionText>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: inputBg,
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            height: 48,
+            marginBottom: 14,
+          }}
+        >
+          <Icon
+            name="document-text-outline"
+            color={lightenHexColor(theme.palette.text, 0.4)}
+            style={{ fontSize: mdFontSize, marginRight: 8 }}
+          />
+          <BottomSheetTextInput
+            value={caption}
+            onChangeText={(t) => setCaption(limitTextLength(t, WorkoutGroupDescLimit))}
+            placeholder="New Caption"
+            placeholderTextColor={lightenHexColor(theme.palette.text, 0.35)}
+            style={{ flex: 1, color: theme.palette.text, fontSize: 14 }}
+          />
+        </View>
+
+        {/* Date picker row */}
+        <TSCaptionText
+          textStyles={{ marginBottom: 6, color: lightenHexColor(theme.palette.text, 0.6) }}
+        >
+          For Date
+        </TSCaptionText>
+        <TouchableHighlight
+          onPress={() => setShowDatePicker(true)}
+          underlayColor={lightenHexColor(theme.palette.primary.main, 0.08)}
+          style={{ borderRadius: 10, marginBottom: 24 }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: inputBg,
+              borderRadius: 10,
+              paddingHorizontal: 12,
+              height: 48,
+            }}
+          >
+            <Icon
+              name="calendar-outline"
+              color={theme.palette.primary.main}
+              style={{ fontSize: mdFontSize, marginRight: 8 }}
+            />
+            <TSSnippetText textStyles={{ color: theme.palette.text }}>
+              {formatLongDate(forDate)}
+            </TSSnippetText>
+          </View>
+        </TouchableHighlight>
+
+        <DatePicker
+          date={forDate}
+          mode="date"
+          locale="en"
+          theme="dark"
+          modal={true}
+          open={showDatePicker}
+          onCancel={() => setShowDatePicker(false)}
+          onConfirm={(date) => {
+            setForDate(date);
+            setShowDatePicker(false);
+          }}
+          buttonColor={theme.palette.text}
+          title="For Date"
+        />
+
+        {/* Buttons */}
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <Pressable
+            onPress={props.onRequestClose}
+            style={({ pressed }) => ({
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: lightenHexColor(theme.palette.AWE_Red, 0.12),
+              borderRadius: 12,
+              paddingVertical: 13,
+              opacity: pressed ? 0.75 : 1,
+            })}
+          >
+            <TSCaptionText
+              textStyles={{ color: theme.palette.AWE_Red, fontWeight: "700" }}
+            >
+              {props.closeText}
+            </TSCaptionText>
+          </Pressable>
+
+          <Pressable
+            onPress={duplicateWorkoutGroup}
+            disabled={isLoading}
+            style={({ pressed }) => ({
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: lightenHexColor(theme.palette.primary.main, 0.14),
+              borderRadius: 12,
+              paddingVertical: 13,
+              opacity: pressed || isLoading ? 0.65 : 1,
+            })}
+          >
+            <TSCaptionText
+              textStyles={{ color: theme.palette.primary.main, fontWeight: "700" }}
+            >
+              {props.actionText}
+            </TSCaptionText>
+          </Pressable>
+        </View>
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 };
 

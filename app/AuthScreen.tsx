@@ -1,8 +1,14 @@
 import React, { FunctionComponent, useState } from "react";
-import styled from "styled-components/native";
-import { Container } from "../src/app_components/shared";
-// import { withTheme } from 'styled-components'
-import { useTheme } from "styled-components";
+import {
+  View,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  Pressable,
+} from "react-native";
+import { useTheme } from "styled-components/native";
+import Icon from "react-native-vector-icons/Ionicons";
 import AuthManager from "../src/utils/auth";
 import { validEmailRegex } from "../src/utils/algos";
 import { post } from "../src/utils/fetchAPI";
@@ -11,30 +17,58 @@ import SignInComp from "./Auth/SignIn";
 import RegisterComp from "./Auth/Register";
 import ResetPasswordAuthPage from "./Auth/ResetPasswordAuthPage";
 import CodeResetPasswordPage from "./Auth/CodeResetPassword";
-import AuthNavComp from "./Auth/AuthNavComp";
-import { View } from "react-native";
+import {
+  TSCaptionText,
+  TSTitleText,
+  TSSnippetText,
+} from "@/src/app_components/Text/Text";
+import { SCREEN_WIDTH, lightenHexColor } from "@/src/app_components/shared";
 
-// import { RootStackParamList } from "../navigators/RootStack";
-// import { StackScreenProps } from "@react-navigation/stack";
-// export type Props = StackScreenProps<RootStackParamList, "AuthScreen">
+// ─── Mode tab strip (Sign In / Register only) ────────────────────────────────
 
-const PageContainer = styled(Container)`
-  background-color: ${(props) => props.theme.palette.backgroundColor};
-  width: 100%;
-  height: 100%;
-`;
+const ModeTab: FunctionComponent<{
+  label: string;
+  active: boolean;
+  onPress(): void;
+}> = ({ label, active, onPress }) => {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        alignItems: "center",
+        paddingVertical: 8,
+        borderRadius: 10,
+        backgroundColor: active
+          ? theme.palette.AWE_Green
+          : "transparent",
+        opacity: pressed ? 0.75 : 1,
+      })}
+    >
+      <TSCaptionText
+        textStyles={{
+          fontWeight: "700",
+          color: active ? "white" : lightenHexColor(theme.palette.text, 0.4),
+          fontSize: 13,
+        }}
+      >
+        {label}
+      </TSCaptionText>
+    </Pressable>
+  );
+};
+
+// ─── Orchestrator ─────────────────────────────────────────────────────────────
 
 const AuthScreen: FunctionComponent = () => {
   const theme = useTheme();
-  // Access value
-  // Access/ send actions
   const auth = AuthManager;
-  // 0 - Sign in
-  // 1 - Sign up
-  // 2 - Forgot Password
-  // 3 - Reset Password code page thing
+
+  // 0=Sign In, 1=Register, 2=Forgot Password, 3=Reset via Code
   const authModes = [0, 1, 2, 3];
   const [authMode, setAuthMode] = useState(0);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [hidePassword, setHidePassword] = useState(true);
@@ -58,30 +92,18 @@ const AuthScreen: FunctionComponent = () => {
   const [hideResetPassword, setHideResetPassword] = useState(true);
 
   const login = async () => {
-    // console.error("Send login: ", email, password);
-    if (emailHelperText.length > 0) {
-      setEmailHelperText("");
-    }
+    if (emailHelperText.length > 0) setEmailHelperText("");
     auth.login(email, password);
   };
 
   auth.listenLogin((loggedIn, msg) => {
-    // console.log("AuthScreen.tsx listenLogin: ", loggedIn, msg);
-
-    if (!loggedIn) {
-      setShowSignInFailedText(true);
-    }
+    if (!loggedIn) setShowSignInFailedText(true);
   }, "authscreen");
 
   const onEmailChange = (text: string) => {
-    // Todo add debounce to allow user to enter last few chars and then check...
     if (text.indexOf("@") >= 0 && text.indexOf(".") >= 0) {
-      if (!reg.test(text)) {
-        setEmailHelperText("Invalid email");
-      } else {
-        setEmailHelperText("");
-      }
-    } else if (emailHelperText != "") {
+      setEmailHelperText(reg.test(text) ? "" : "Invalid email");
+    } else if (emailHelperText !== "") {
       setEmailHelperText("");
     }
     setEmail(text);
@@ -94,17 +116,10 @@ const AuthScreen: FunctionComponent = () => {
   };
 
   const onNewEmailChange = (text: string) => {
-    if (registerError) {
-      setRegisterError("");
-    }
-
+    if (registerError) setRegisterError("");
     if (text.indexOf("@") >= 0 && text.indexOf(".") >= 0) {
-      if (!reg.test(text)) {
-        setNewEmailHelperText("Invalid email");
-      } else {
-        setNewEmailHelperText("");
-      }
-    } else if (newEmailHelperText != "") {
+      setNewEmailHelperText(reg.test(text) ? "" : "Invalid email");
+    } else if (newEmailHelperText !== "") {
       setNewEmailHelperText("");
     }
     setEmail(text);
@@ -118,7 +133,6 @@ const AuthScreen: FunctionComponent = () => {
 
   const onNewPasswordConfirmChange = (text: string) => {
     if (text.length >= newPassword.length && newPassword !== text) {
-      console.log("Show error on helper text with Password confirm");
       setMismatchPasswordText("Passwords do not match");
     } else {
       setMismatchPasswordText("");
@@ -127,57 +141,36 @@ const AuthScreen: FunctionComponent = () => {
   };
 
   const register = async () => {
-    if (newEmailHelperText.length > 0) {
-      setNewEmailHelperText("");
-    }
-    if (registerError.length > 0) {
-      setRegisterError("");
-    }
-
-    if (newEmail.length <= 0 || newPassword !== newPasswordConfirm) {
-      console.log("Unable to register user");
-      return;
-    }
-
+    if (newEmailHelperText.length > 0) setNewEmailHelperText("");
+    if (registerError.length > 0) setRegisterError("");
+    if (newEmail.length <= 0 || newPassword !== newPasswordConfirm) return;
     if (!reg.test(newEmail)) {
-      console.log("Invalid email");
       setNewEmailHelperText("Invalid Email");
       return;
     }
-    console.log("Registering: ", newEmail, newPassword, newPasswordConfirm);
     const data = new FormData();
     data.append("email", newEmail);
     data.append("password", newPassword);
     data.append("username", newEmail);
-
     try {
       const res = await auth.register(data);
-      console.log("Sign up res: ", res);
-      if (!res) {
-        console.log("WTF is happening right now");
-      } else if (res.id > 0) {
+      if (res?.id > 0) {
         setAuthMode(0);
-      } else if (res.email == "Email taken") {
-        setRegisterError("Email taken!");
+      } else if (res?.email === "Email taken") {
+        setRegisterError("Email already in use.");
       }
-    } catch (error) {
-      console.log("Error registering:: ", error);
-      setRegisterError("Error registering");
+    } catch {
+      setRegisterError("Error registering. Please try again.");
     }
   };
 
   const changePassword = async () => {
-    console.log("Changing password: ", resetEmail, resetCode, resetPassword);
-    if (resetPasswordError.length > 0) {
-      setResetPasswordError("");
-    }
-
+    if (resetPasswordError.length > 0) setResetPasswordError("");
     const res = await post(`${BASEURL}user/reset_password/`, {
       email: resetEmail,
       reset_code: resetCode,
       new_password: resetPassword,
-    }).then((res) => res.json());
-    console.log("res", res);
+    }).then((r) => r.json());
     if (res.data) {
       setAuthMode(0);
       setResetCode("");
@@ -188,76 +181,184 @@ const AuthScreen: FunctionComponent = () => {
     }
   };
 
-  // RootNavigation.navigate("HomePage", {})
-  return (
-    <View style={{ flex: 1, alignItems: "center", width: "100%" }}>
-      <View
-        style={{
-          flex: 1,
-        }}
-      ></View>
+  const isSecondaryMode = authMode === 2 || authMode === 3;
 
-      {authModes[authMode] == 0 ? (
-        <SignInComp
-          email={email}
-          showSignInFailedText={showSignInFailedText}
-          emailHelperText={emailHelperText}
-          hidePassword={hidePassword}
-          login={login}
-          onEmailChange={onEmailChange}
-          onPasswordChange={onPasswordChange}
-          password={password}
-          setHidePassword={setHidePassword}
-          setAuthMode={setAuthMode}
-        />
-      ) : authModes[authMode] == 1 ? (
-        <RegisterComp
-          hideNewPassword={hideNewPassword}
-          mismatchPasswordText={mismatchPasswordText}
-          newEmail={newEmail}
-          newEmailHelperText={newEmailHelperText}
-          newPassword={newPassword}
-          newPasswordConfirm={newPasswordConfirm}
-          onNewEmailChange={onNewEmailChange}
-          onNewPasswordChange={onNewPasswordChange}
-          onNewPasswordConfirmChange={onNewPasswordConfirmChange}
-          register={register}
-          registerError={registerError}
-          setAuthMode={setAuthMode}
-          setHideNewPassword={setHideNewPassword}
-        />
-      ) : authModes[authMode] == 2 ? (
-        <ResetPasswordAuthPage
-          setAuthMode={setAuthMode}
-          resetEmail={resetEmail}
-          setResetEmail={setResetEmail}
-          resetEmailError={resetEmailError}
-          setResetEmailError={setResetEmailError}
-        />
-      ) : (
-        <CodeResetPasswordPage
-          changePassword={changePassword}
-          hideResetPassword={hideResetPassword}
-          resetCode={resetCode}
-          resetEmail={resetEmail}
-          resetEmailError={resetEmailError}
-          resetPassword={resetPassword}
-          resetPasswordError={resetPasswordError}
-          setAuthMode={setAuthMode}
-          setHideResetPassword={setHideResetPassword}
-          setResetCode={setResetCode}
-          setResetEmail={setResetEmail}
-          setResetEmailError={setResetEmailError}
-          setResetPassword={setResetPassword}
-          validEmailRegex={validEmailRegex}
-        />
-      )}
-      <View
-        style={{
-          flex: 3,
-        }}
-      ></View>
-    </View>
+  const secondaryTitle =
+    authMode === 2 ? "Forgot Password" : "Reset Password";
+  const secondarySubtitle =
+    authMode === 2
+      ? "Enter your email to receive a reset code"
+      : "Enter the code from your email";
+
+  return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.palette.backgroundColor }}
+    >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            alignItems: "center",
+            paddingTop: 36,
+            paddingBottom: 40,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ── Brand header ── */}
+          <View style={{ alignItems: "center", marginBottom: 32 }}>
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 18,
+                backgroundColor: `${theme.palette.AWE_Green}20`,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 14,
+              }}
+            >
+              <Icon
+                name="barbell-outline"
+                size={30}
+                color={theme.palette.AWE_Green}
+              />
+            </View>
+            <TSTitleText textStyles={{ marginVertical: 0, fontSize: 26 }}>
+              LiftL0g
+            </TSTitleText>
+            <TSCaptionText
+              textStyles={{
+                color: lightenHexColor(theme.palette.text, 0.45),
+                marginTop: 4,
+              }}
+            >
+              {isSecondaryMode
+                ? secondarySubtitle
+                : "Track every rep. Own every workout."}
+            </TSCaptionText>
+          </View>
+
+          {/* ── Card ── */}
+          <View
+            style={{
+              width: SCREEN_WIDTH * 0.88,
+              backgroundColor: lightenHexColor(theme.palette.darkGray, 0.04),
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: lightenHexColor(theme.palette.lightGray, 0.08),
+              padding: 24,
+            }}
+          >
+            {/* Mode tab strip or secondary header */}
+            {isSecondaryMode ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 20,
+                }}
+              >
+                <Pressable
+                  onPress={() => setAuthMode(0)}
+                  hitSlop={10}
+                  style={{ marginRight: 10 }}
+                >
+                  <Icon
+                    name="arrow-back-outline"
+                    size={20}
+                    color={lightenHexColor(theme.palette.text, 0.5)}
+                  />
+                </Pressable>
+                <TSSnippetText textStyles={{ fontWeight: "700" }}>
+                  {secondaryTitle}
+                </TSSnippetText>
+              </View>
+            ) : (
+              <View
+                style={{
+                  flexDirection: "row",
+                  backgroundColor: lightenHexColor(theme.palette.lightGray, 0.06),
+                  borderRadius: 12,
+                  padding: 3,
+                  marginBottom: 24,
+                }}
+              >
+                <ModeTab
+                  label="Sign In"
+                  active={authMode === 0}
+                  onPress={() => setAuthMode(0)}
+                />
+                <ModeTab
+                  label="Register"
+                  active={authMode === 1}
+                  onPress={() => setAuthMode(1)}
+                />
+              </View>
+            )}
+
+            {/* Active form */}
+            {authMode === 0 ? (
+              <SignInComp
+                email={email}
+                showSignInFailedText={showSignInFailedText}
+                emailHelperText={emailHelperText}
+                hidePassword={hidePassword}
+                login={login}
+                onEmailChange={onEmailChange}
+                onPasswordChange={onPasswordChange}
+                password={password}
+                setHidePassword={setHidePassword}
+                setAuthMode={setAuthMode}
+              />
+            ) : authMode === 1 ? (
+              <RegisterComp
+                hideNewPassword={hideNewPassword}
+                mismatchPasswordText={mismatchPasswordText}
+                newEmail={newEmail}
+                newEmailHelperText={newEmailHelperText}
+                newPassword={newPassword}
+                newPasswordConfirm={newPasswordConfirm}
+                onNewEmailChange={onNewEmailChange}
+                onNewPasswordChange={onNewPasswordChange}
+                onNewPasswordConfirmChange={onNewPasswordConfirmChange}
+                register={register}
+                registerError={registerError}
+                setAuthMode={setAuthMode}
+                setHideNewPassword={setHideNewPassword}
+              />
+            ) : authMode === 2 ? (
+              <ResetPasswordAuthPage
+                setAuthMode={setAuthMode}
+                resetEmail={resetEmail}
+                setResetEmail={setResetEmail}
+                resetEmailError={resetEmailError}
+                setResetEmailError={setResetEmailError}
+              />
+            ) : (
+              <CodeResetPasswordPage
+                changePassword={changePassword}
+                hideResetPassword={hideResetPassword}
+                resetCode={resetCode}
+                resetEmail={resetEmail}
+                resetEmailError={resetEmailError}
+                resetPassword={resetPassword}
+                resetPasswordError={resetPasswordError}
+                setAuthMode={setAuthMode}
+                setHideResetPassword={setHideResetPassword}
+                setResetCode={setResetCode}
+                setResetEmail={setResetEmail}
+                setResetEmailError={setResetEmailError}
+                setResetPassword={setResetPassword}
+                validEmailRegex={validEmailRegex}
+              />
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

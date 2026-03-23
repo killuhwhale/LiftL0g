@@ -1,46 +1,46 @@
 import React, { FunctionComponent } from "react";
-import styled from "styled-components/native";
 import { useTheme } from "styled-components/native";
 import {
   TSCaptionText,
   TSParagrapghText,
 } from "@/src/app_components/Text/Text";
-// import { useNavigation } from "@react-navigation/native";
 import {
   displayJList,
-  SCREEN_WIDTH,
   WORKOUT_TYPE_LABELS,
   WORKOUTITEM_HEIGHT,
   WORKOUTITEM_WIDTH,
 } from "@/src/app_components/shared";
 import { WorkoutCardProps } from "./types";
 import { View } from "react-native";
-
 import { AnimatedButton } from "@/src/app_components/Buttons/buttons";
 import Icon from "react-native-vector-icons/Ionicons";
 import {
   useDeleteCompletedWorkoutMutation,
   useDeleteWorkoutMutation,
 } from "@/src/redux/api/apiSlice";
-
-import { router, useNavigation } from "expo-router";
+import { router } from "expo-router";
 import WorkoutItemPreviewHorizontalList from "./WorkoutItemPreviewHorizontalList";
 
-const CardRow = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-`;
+// Scheme type → accent color index matches WorkoutScreen type chip order:
+// 0=Standard(Blue), 1=Reps(Red), 2=Rounds(Amber), 3=Creative(Green)
+const useTypeColor = (schemeType: number) => {
+  const theme = useTheme();
+  const colors = [
+    theme.palette.AWE_Blue,
+    theme.palette.AWE_Red,
+    theme.palette.AWE_Yellow,
+    theme.palette.AWE_Green,
+  ];
+  return colors[schemeType] ?? theme.palette.lightGray;
+};
 
 const WorkoutCard: FunctionComponent<WorkoutCardProps> = (props) => {
   const theme = useTheme();
-  // const navigation = useNavigation<GymClassScreenProps["navigation"]>();
+  const typeColor = useTypeColor(props.scheme_type);
 
-  const [deleteWorkout, { isLoading }] = useDeleteWorkoutMutation();
-  const [
-    deleteCompletedWorkout,
-    { isLoading: deleteCompletedWorkoutIsLoading },
-  ] = useDeleteCompletedWorkoutMutation();
-  // console.log("Workout card props: ", props)
+  const [deleteWorkout] = useDeleteWorkoutMutation();
+  const [deleteCompletedWorkout] = useDeleteCompletedWorkoutMutation();
+
   const isOGWorkout = props.workout_items ? true : false;
   const items = props.workout_items
     ? props.workout_items
@@ -48,12 +48,7 @@ const WorkoutCard: FunctionComponent<WorkoutCardProps> = (props) => {
     ? props.completed_workout_items
     : [];
 
-  const itemsPerCol = 1;
-  const numItems = items.length - 1;
-  const numCols = Math.max(1, Math.ceil(items.length / itemsPerCol));
-
   const navToWorkoutDetail = () => {
-    console.log("Navigating to WorkoutDetailScreen w/ props: ", props);
     router.push({
       pathname: "/WorkoutDetailScreen",
       params: {
@@ -81,12 +76,6 @@ const WorkoutCard: FunctionComponent<WorkoutCardProps> = (props) => {
   };
 
   const onFinish = () => {
-    console.log(
-      "On Animate Finish, group finished? ",
-      props.group,
-      props.group?.finished
-    );
-
     if (props.editable) {
       _deleteWorkout();
     } else if (props.group?.finished) {
@@ -99,100 +88,141 @@ const WorkoutCard: FunctionComponent<WorkoutCardProps> = (props) => {
   const displaySchemeRounds = displayJList(props.scheme_rounds);
   const instruction = props.instruction;
   const displaySchemeType =
-    props.scheme_type <= 2 ? WORKOUT_TYPE_LABELS[props.scheme_type] : "";
+    props.scheme_type <= 3 ? WORKOUT_TYPE_LABELS[props.scheme_type] : "";
 
-  let subtitle = ``;
+  let subtitle = "";
   if (displaySchemeRounds && displaySchemeRounds !== "undefined") {
     subtitle += displaySchemeRounds + " ";
   }
   if (
     instruction &&
     instruction !== "undefined" &&
-    displaySchemeRounds != instruction
+    displaySchemeRounds !== instruction
   ) {
     subtitle += instruction + " ";
   }
-  if (displaySchemeType) {
-    subtitle += displaySchemeType;
-  }
 
-  console.log(
-    "WorkoutCard info: ",
-    displaySchemeRounds,
-    instruction,
-    displaySchemeType
-  );
+  const actionIcon = props.editable
+    ? "trash-outline"
+    : props.group?.finished
+    ? "eye-outline"
+    : "pencil-outline";
+
   return (
     <View
       testID={props.testID}
       style={{
-        width: SCREEN_WIDTH * 1.0,
-        borderRadius: 25,
-        marginBottom: 24,
-        paddingBottom: 12,
+        width: "100%",
+        marginBottom: 16,
+        paddingHorizontal: 12,
       }}
     >
-      <View style={{ width: "100%", paddingLeft: 8, paddingTop: 8, flex: 1 }}>
-        <WorkoutItemPreviewHorizontalList
-          testID={props.testID}
-          data={items}
-          schemeType={props.scheme_type}
-          itemWidth={WORKOUTITEM_WIDTH}
-          itemHeight={WORKOUTITEM_HEIGHT}
-          ownedByClass={props.ownedByClass}
-        />
-      </View>
       <View
         style={{
-          borderColor: theme.palette.text,
-          borderWidth: props.editable ? 5 : 0,
-          borderRadius: 25,
-          backgroundColor: theme.palette.transparent,
-          flex: 2,
+          backgroundColor: theme.palette.darkGray,
+          borderRadius: 16,
+          overflow: "hidden",
+          // Subtle red glow border when in delete mode
+          borderWidth: props.editable ? 2 : 0,
+          borderColor: props.editable ? theme.palette.AWE_Red : "transparent",
         }}
       >
+        {/* Scheme-type accent bar */}
+        <View style={{ height: 3, backgroundColor: typeColor }} />
+
+        {/* Horizontal workout items */}
+        {/* Height = itemHeight (150) + contentContainer vertical padding (15+15) + paddingTop (8) */}
+        <View style={{ paddingTop: 8, paddingLeft: 4, height: WORKOUTITEM_HEIGHT + 38 }}>
+          <WorkoutItemPreviewHorizontalList
+            testID={props.testID}
+            data={items}
+            schemeType={props.scheme_type}
+            itemWidth={WORKOUTITEM_WIDTH}
+            itemHeight={WORKOUTITEM_HEIGHT}
+            ownedByClass={props.ownedByClass}
+          />
+        </View>
+
+        {/* Divider */}
+        <View
+          style={{
+            height: 1,
+            backgroundColor: `${theme.palette.lightGray}1A`,
+            marginHorizontal: 14,
+          }}
+        />
+
+        {/* Action row — tappable to edit / view / delete */}
         <AnimatedButton
-          onFinish={() => onFinish()}
+          onFinish={onFinish}
           title="del workout"
           active={props.editable}
         >
-          <CardRow style={{ height: "100%" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+            }}
+          >
+            {/* Scheme type badge */}
             <View
               style={{
-                flexDirection: "row",
-                paddingLeft: 16,
-                justifyContent: "space-between",
-                alignContent: "space-between",
-                alignItems: "center",
-                flex: 1,
-                paddingVertical: 8,
+                backgroundColor: `${typeColor}1E`,
+                borderRadius: 6,
                 paddingHorizontal: 8,
+                paddingVertical: 3,
+                marginRight: 10,
+                borderWidth: 1,
+                borderColor: `${typeColor}33`,
               }}
             >
-              <TSParagrapghText
+              <TSCaptionText
                 textStyles={{
-                  color: theme.palette.primary.main,
-                  fontWeight: "500",
+                  color: typeColor,
+                  fontSize: 10,
+                  fontWeight: "700",
+                  letterSpacing: 0.4,
                 }}
               >
-                {props.title}{" "}
-              </TSParagrapghText>
-              <TSCaptionText>
-                {subtitle}
-                {/* {displayJList(props.scheme_rounds)}{" "}
-                {props.instruction ? props.instruction : ""}{" "}
-                {props.scheme_type <= 2
-                  ? WORKOUT_TYPE_LABELS[props.scheme_type]
-                  : ""} */}
+                {displaySchemeType || "Custom"}
               </TSCaptionText>
-
-              <Icon
-                name="chevron-forward-outline"
-                color={theme.palette.text}
-                style={{ fontSize: 24 }}
-              />
             </View>
-          </CardRow>
+
+            {/* Workout title */}
+            <TSParagrapghText
+              textStyles={{ flex: 1, fontWeight: "600" }}
+              numberOfLines={1}
+            >
+              {props.title}
+            </TSParagrapghText>
+
+            {/* Subtitle (rounds / instruction) */}
+            {subtitle.trim() ? (
+              <TSCaptionText
+                textStyles={{
+                  color: `${theme.palette.text}55`,
+                  marginRight: 8,
+                  maxWidth: 90,
+                }}
+                numberOfLines={1}
+              >
+                {subtitle.trim()}
+              </TSCaptionText>
+            ) : null}
+
+            {/* Action icon */}
+            <Icon
+              name={actionIcon}
+              color={
+                props.editable
+                  ? theme.palette.AWE_Red
+                  : `${theme.palette.lightGray}99`
+              }
+              style={{ fontSize: 17 }}
+            />
+          </View>
         </AnimatedButton>
       </View>
     </View>

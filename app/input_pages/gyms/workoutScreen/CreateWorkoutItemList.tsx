@@ -1,14 +1,17 @@
-import React, { FunctionComponent, ReactNode, useState } from "react";
-import {
-  View,
-  Switch,
-  ScrollView,
-  TouchableWithoutFeedback,
-} from "react-native";
+import React, { FunctionComponent, useState } from "react";
+import { View, TouchableOpacity, ScrollView, Pressable } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  cancelAnimation,
+  runOnJS,
+} from "react-native-reanimated";
 import { useTheme } from "styled-components";
 
 import Icon from "react-native-vector-icons/Ionicons";
-import { TSCaptionText } from "@/src/app_components/Text/Text";
+import { TSCaptionText, XSmallText } from "@/src/app_components/Text/Text";
 import {
   SCREEN_HEIGHT,
   WORKOUT_TYPES,
@@ -21,228 +24,314 @@ import {
   WorkoutItemProps,
 } from "@/src/app_components/Cards/types";
 import ItemString from "@/src/app_components/WorkoutItems/ItemString";
-import { AnimatedButton } from "@/src/app_components/Buttons/buttons";
-import { ColorPalette, COLORSPALETTE } from "@/src/utils/algos";
+import { COLORSPALETTE } from "@/src/utils/algos";
 
-const ItemRowButton: FunctionComponent<{
-  showAddSSID: boolean;
-  allowMarkConstant: boolean;
-  allowDeleteInUpdateMode: boolean;
-  idx: number;
-  item: WorkoutItemProps | WorkoutDualItemProps;
-  children: ReactNode;
-  isCurrentUpdateItem: boolean;
-  RowItemOnPress: (
-    idx: number,
-    item: WorkoutItemProps | WorkoutDualItemProps,
-    _showAddSSID: boolean,
-    _allowMarkConstant: boolean,
-    _allowDeleteInUpdateMode: boolean
-  ) => void;
-}> = ({
-  showAddSSID,
-  allowMarkConstant,
-  allowDeleteInUpdateMode,
-  idx,
-  item,
-  children,
-  isCurrentUpdateItem,
-  RowItemOnPress,
-}) => {
-  return showAddSSID || allowMarkConstant || allowDeleteInUpdateMode ? (
-    <TouchableWithoutFeedback
-      key={`item_test_${Math.random()}`}
-      style={{ width: "100%" }}
-      onPress={() => {
-        RowItemOnPress(
-          idx,
-          item,
-          showAddSSID,
-          allowMarkConstant,
-          allowDeleteInUpdateMode
-        );
+const HOLD_MS = 700;
+
+// ─── Delete trigger button ────────────────────────────────────────────────────
+// Just fires press events — the fill animation lives in ItemRow
+
+const DeleteTrigger: FunctionComponent<{
+  onPressIn(): void;
+  onPressOut(): void;
+}> = ({ onPressIn, onPressOut }) => {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        backgroundColor: `${theme.palette.AWE_Red}22`,
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      <View
-        style={{
-          borderWidth: isCurrentUpdateItem ? 1 : 0,
-          borderColor: "white",
-        }}
-      >
-        {children}
-      </View>
-    </TouchableWithoutFeedback>
-  ) : (
-    <AnimatedButton
-      title={item.name.name}
-      style={{ width: "100%" }}
-      onFinish={() => {
-        RowItemOnPress(idx, item, showAddSSID, allowMarkConstant, false);
-      }}
-      key={`itemz_${idx}_${Math.random()}`}
-    >
-      {children}
-    </AnimatedButton>
+      <Icon name="trash-outline" size={16} color={theme.palette.AWE_Red} />
+    </Pressable>
   );
 };
 
-const ListToggles: FunctionComponent<{
+// ─── Inline color picker ─────────────────────────────────────────────────────
+
+const InlineColorPicker: FunctionComponent<{
+  onSelect(colorIdx: number): void;
+  selectedIdx: number;
+}> = ({ onSelect, selectedIdx }) => {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        gap: 6,
+        alignItems: "center",
+      }}
+    >
+      <XSmallText textStyles={{ fontSize: 10, opacity: 0.6, marginRight: 4 }}>
+        Superset color:
+      </XSmallText>
+      {COLORSPALETTE.map((color, idx) => (
+        <TouchableOpacity
+          key={idx}
+          onPress={() => onSelect(idx)}
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 11,
+            backgroundColor: color,
+            borderWidth: selectedIdx === idx ? 2.5 : 0,
+            borderColor: "white",
+          }}
+        />
+      ))}
+    </View>
+  );
+};
+
+// ─── Single item row ─────────────────────────────────────────────────────────
+
+const ItemRow: FunctionComponent<{
+  item: WorkoutItemProps | WorkoutDualItemProps;
+  idx: number;
   schemeType: number;
-  curColor: number;
-  allowMarkConstant: boolean;
-  showAddSSID: boolean;
-  allowDeleteInUpdateMode: boolean;
-  setShowAddSSID(n: boolean): void;
-  setCurColor(n: number): void;
-  setAllowMarkConstant: React.Dispatch<React.SetStateAction<boolean>>;
-  setAllowDeleteInUpdateMode: React.Dispatch<React.SetStateAction<boolean>>;
+  isEditing: boolean;
+  requestUpdate(item: WorkoutItemProps | WorkoutDualItemProps | null): void;
+  removeItem(idx: number): void;
+  removeItemSSID(idx: number): void;
+  addItemToSSIDWithColor(idx: number, colorIdx: number): void;
+  updateItemConstant(idx: number): void;
 }> = ({
+  item,
+  idx,
   schemeType,
-  curColor,
-  allowMarkConstant,
-  showAddSSID,
-  allowDeleteInUpdateMode,
-  setShowAddSSID,
-  setCurColor,
-  setAllowMarkConstant,
-  setAllowDeleteInUpdateMode,
+  isEditing,
+  requestUpdate,
+  removeItem,
+  removeItemSSID,
+  addItemToSSIDWithColor,
+  updateItemConstant,
 }) => {
   const theme = useTheme();
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [rowWidth, setRowWidth] = useState(0);
+
+  const isStandard = WORKOUT_TYPES[schemeType] == STANDARD_W;
+  const isReps = WORKOUT_TYPES[schemeType] == REPS_W;
+  const ssidColor = item.ssid >= 0 ? COLORSPALETTE[item.ssid] : null;
+
+  // Full-row fill for hold-to-delete
+  const fillWidth = useSharedValue(0);
+  const fillStyle = useAnimatedStyle(() => ({ width: fillWidth.value }));
+
+  const handleDeletePressIn = () => {
+    fillWidth.value = withTiming(rowWidth, { duration: HOLD_MS }, (finished) => {
+      if (finished) {
+        runOnJS(removeItem)(idx);
+        fillWidth.value = 0;
+      }
+    });
+  };
+
+  const handleDeletePressOut = () => {
+    cancelAnimation(fillWidth);
+    fillWidth.value = withSpring(0, { damping: 18, stiffness: 220 });
+  };
+
+  const handleSuperset = () => {
+    if (item.ssid >= 0) {
+      removeItemSSID(idx);
+      setShowColorPicker(false);
+    } else {
+      setShowColorPicker((v) => !v);
+    }
+  };
+
+  const handleColorSelect = (colorIdx: number) => {
+    addItemToSSIDWithColor(idx, colorIdx);
+    setShowColorPicker(false);
+  };
 
   return (
-    <View style={{ flexDirection: "row", width: "100%" }}>
+    <View
+      onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}
+      style={{
+        marginBottom: 6,
+        borderRadius: 10,
+        overflow: "hidden",
+        backgroundColor: theme.palette.darkGray,
+        borderWidth: 1.5,
+        borderColor: isEditing
+          ? `${theme.palette.AWE_Yellow}55`
+          : ssidColor
+          ? `${ssidColor}44`
+          : `${theme.palette.lightGray}18`,
+      }}
+    >
+      {/* Full-row delete fill — sits behind content */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          {
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            backgroundColor: `${theme.palette.AWE_Red}44`,
+          },
+          fillStyle,
+        ]}
+      />
+
+      {/* Row content */}
       <View
         style={{
-          flex: 1,
           flexDirection: "row",
-          justifyContent: "space-between",
-          paddingHorizontal: 12,
           alignItems: "center",
-          width: "100%",
-          borderWidth: 1,
-          borderColor: "white",
+          minHeight: SCREEN_HEIGHT * 0.055,
         }}
       >
-        <View>
-          <TSCaptionText
-            textStyles={{ color: theme.palette.text, textAlign: "left" }}
+        {/* Superset left bar (STANDARD_W) */}
+        {isStandard && (
+          <TouchableOpacity
+            onPress={handleSuperset}
+            style={{
+              width: 28,
+              alignSelf: "stretch",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: ssidColor ?? `${theme.palette.lightGray}12`,
+            }}
           >
-            Update
-          </TSCaptionText>
+            <Icon
+              name={ssidColor ? "link" : "add"}
+              size={13}
+              color={ssidColor ? "white" : `${theme.palette.lightGray}55`}
+            />
+          </TouchableOpacity>
+        )}
+
+        {/* Constant indicator (REPS_W) */}
+        {isReps && (
+          <TouchableOpacity
+            onPress={() => updateItemConstant(idx)}
+            style={{
+              width: 28,
+              alignSelf: "stretch",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: item.constant
+                ? `${theme.palette.AWE_Blue}33`
+                : `${theme.palette.lightGray}12`,
+            }}
+          >
+            <Icon
+              name={item.constant ? "lock-closed" : "lock-open-outline"}
+              size={13}
+              color={
+                item.constant
+                  ? theme.palette.AWE_Blue
+                  : `${theme.palette.lightGray}55`
+              }
+            />
+          </TouchableOpacity>
+        )}
+
+        {/* Item text */}
+        <View style={{ flex: 1, paddingHorizontal: 10, paddingVertical: 8 }}>
+          <ItemString item={item} schemeType={schemeType} prefix="" />
         </View>
-        <View>
-          <Switch
-            value={allowDeleteInUpdateMode}
-            onValueChange={(v) => {
-              setAllowDeleteInUpdateMode(v);
+
+        {/* Action icons */}
+        <View style={{ flexDirection: "row", paddingRight: 8, gap: 2 }}>
+          <TouchableOpacity
+            onPress={() => requestUpdate(item)}
+            style={{
+              padding: 8,
+              borderRadius: 8,
+              backgroundColor: `${theme.palette.AWE_Yellow}18`,
             }}
-            trackColor={{
-              true: theme.palette.primary.contrastText,
-              false: theme.palette.darkGray,
-            }}
-            thumbColor={
-              allowDeleteInUpdateMode
-                ? theme.palette.primary.main
-                : theme.palette.gray
-            }
+          >
+            <Icon
+              name="create-outline"
+              size={16}
+              color={theme.palette.AWE_Yellow}
+            />
+          </TouchableOpacity>
+          <DeleteTrigger
+            onPressIn={handleDeletePressIn}
+            onPressOut={handleDeletePressOut}
           />
         </View>
       </View>
 
-      {schemeType === 0 ? (
+      {/* Inline color picker */}
+      {showColorPicker && isStandard && (
         <View
           style={{
-            flex: 1,
-            justifyContent: "center",
-            alignContent: "center",
-            alignItems: "center",
-            borderWidth: 1,
-            borderColor: "white",
+            borderTopWidth: 1,
+            borderTopColor: `${theme.palette.lightGray}18`,
           }}
         >
-          <View
-            style={{
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexDirection: "row",
-              paddingHorizontal: 12,
-              width: "100%",
-            }}
-          >
-            <TSCaptionText
-              textStyles={{ color: theme.palette.text, textAlign: "left" }}
-            >
-              Add Superset
-            </TSCaptionText>
-            <Switch
-              value={showAddSSID}
-              onValueChange={(v) => {
-                setShowAddSSID(v);
-                if (!v) {
-                  setCurColor(-1);
-                }
-              }}
-              trackColor={{
-                true: theme.palette.primary.contrastText,
-                false: theme.palette.darkGray,
-              }}
-              thumbColor={
-                showAddSSID ? theme.palette.primary.main : theme.palette.gray
-              }
-            />
-          </View>
-          <View style={{ flex: 5, paddingBottom: showAddSSID ? 12 : 0 }}>
-            {showAddSSID ? (
-              <ColorPalette onSelect={setCurColor} selectedIdx={curColor} />
-            ) : (
-              <></>
-            )}
-          </View>
-        </View>
-      ) : schemeType === 1 ? (
-        <View
-          style={{
-            flex: 1,
-            width: "100%",
-            alignItems: "center",
-            flexDirection: "row",
-            paddingHorizontal: 12,
-            justifyContent: "space-between",
-            borderWidth: 1,
-            borderColor: "white",
-          }}
-        >
-          <TSCaptionText
-            textStyles={{ color: theme.palette.text, textAlign: "left" }}
-          >
-            Constant
-          </TSCaptionText>
-          <Switch
-            value={allowMarkConstant}
-            onValueChange={(v) => {
-              console.log("Allow mark constant", v);
-              setAllowMarkConstant(v);
-            }}
-            trackColor={{
-              true: theme.palette.primary.contrastText,
-              false: theme.palette.darkGray,
-            }}
-            thumbColor={
-              allowMarkConstant
-                ? theme.palette.primary.main
-                : theme.palette.gray
-            }
+          <InlineColorPicker
+            onSelect={handleColorSelect}
+            selectedIdx={item.ssid}
           />
         </View>
-      ) : (
-        <></>
       )}
     </View>
   );
 };
 
-// List of buttons that have text to display the workout item and different press behavior depending on state
+// ─── List header ──────────────────────────────────────────────────────────────
+
+const ListHeader: FunctionComponent<{
+  schemeType: number;
+  count: number;
+}> = ({ schemeType, count }) => {
+  const theme = useTheme();
+  const isStandard = WORKOUT_TYPES[schemeType] == STANDARD_W;
+  const isReps = WORKOUT_TYPES[schemeType] == REPS_W;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 4,
+        paddingBottom: 8,
+      }}
+    >
+      <TSCaptionText textStyles={{ fontWeight: "700", fontSize: 12 }}>
+        Items ({count})
+      </TSCaptionText>
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        {isStandard && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Icon name="link" size={11} color={`${theme.palette.lightGray}88`} />
+            <XSmallText textStyles={{ fontSize: 10, color: `${theme.palette.lightGray}88` }}>
+              Tap bar to superset
+            </XSmallText>
+          </View>
+        )}
+        {isReps && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Icon name="lock-closed-outline" size={11} color={`${theme.palette.lightGray}88`} />
+            <XSmallText textStyles={{ fontSize: 10, color: `${theme.palette.lightGray}88` }}>
+              Tap to mark constant
+            </XSmallText>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
+// ─── Main list component ──────────────────────────────────────────────────────
+
 const CreateWorkoutItemList: FunctionComponent<{
   items: WorkoutItemProps[];
   schemeType: number;
@@ -254,186 +343,55 @@ const CreateWorkoutItemList: FunctionComponent<{
   setCurColor(n: number): void;
   removeItemSSID(n: number): void;
   addItemToSSID(n: number): void;
+  addItemToSSIDWithColor?(idx: number, colorIdx: number): void;
   updateItemConstant(n: number): void;
   removeItem(n: number): void;
   requestUpdate: (item: WorkoutItemProps | WorkoutDualItemProps | null) => void;
 }> = ({
   items,
   schemeType,
-  curColor,
-  showAddSSID,
   itemToUpdate,
-
-  setShowAddSSID,
-  setCurColor,
   removeItemSSID,
+  addItemToSSIDWithColor,
   addItemToSSID,
+  setCurColor,
   updateItemConstant,
   removeItem,
   requestUpdate,
 }) => {
-  const theme = useTheme();
-  const [allowMarkConstant, setAllowMarkConstant] = useState(false);
-  const [allowDeleteInUpdateMode, setAllowDeleteInUpdateMode] = useState(false);
-
-  const RowItemOnPress = (
-    idx: number,
-    item: WorkoutItemProps | WorkoutDualItemProps,
-    _showAddSSID: boolean,
-    _allowMarkConstant: boolean,
-    _allowDeleteInUpdateMode: boolean
-  ) => {
-    // We need to change the button behavior for item row when pressed, depending on the state
-    // If we need to mark the row as constant or group w/ SSID then we can do that in the first block
-    // If we need to modify the row item, we can do that in the second block
-    //    To modify we can remove the item or update it.
-    // We can add another switch to toggle update mode
-
-    if (_showAddSSID || _allowMarkConstant) {
-      if (WORKOUT_TYPES[schemeType] == STANDARD_W) {
-        item.ssid >= 0
-          ? removeItemSSID(idx)
-          : curColor > -1
-          ? addItemToSSID(idx)
-          : console.log("Select a color first!");
-      } else if (WORKOUT_TYPES[schemeType] == REPS_W) {
-        updateItemConstant(idx);
-      }
+  const handleAddWithColor = (idx: number, colorIdx: number) => {
+    if (addItemToSSIDWithColor) {
+      addItemToSSIDWithColor(idx, colorIdx);
     } else {
-      if (_allowDeleteInUpdateMode) {
-        console.log("Setting item to update: ", item);
-        requestUpdate(item);
-      } else {
-        removeItem(idx);
-      }
+      setCurColor(colorIdx);
+      setTimeout(() => addItemToSSID(idx), 0);
     }
   };
 
   return (
-    <View
-      style={{
-        flex: 4,
-        width: "100%",
-        height: "100%",
-      }}
-    >
-      <ListToggles
-        allowDeleteInUpdateMode={allowDeleteInUpdateMode}
-        schemeType={schemeType}
-        curColor={curColor}
-        allowMarkConstant={allowMarkConstant}
-        showAddSSID={showAddSSID}
-        setShowAddSSID={setShowAddSSID}
-        setCurColor={setCurColor}
-        setAllowMarkConstant={setAllowMarkConstant}
-        setAllowDeleteInUpdateMode={setAllowDeleteInUpdateMode}
-      />
-
-      <View>
-        <ScrollView>
-          {items.map((item, idx) => {
-            const isCurrentUpdateItem = itemToUpdate?.uuid === item.uuid;
-
-            return (
-              <ItemRowButton
-                key={`item_test_${Math.random()}`}
-                idx={idx}
-                item={item}
-                isCurrentUpdateItem={isCurrentUpdateItem}
-                showAddSSID={showAddSSID}
-                allowMarkConstant={allowMarkConstant}
-                RowItemOnPress={RowItemOnPress}
-                allowDeleteInUpdateMode={allowDeleteInUpdateMode}
-              >
-                <View
-                  style={{
-                    height: SCREEN_HEIGHT * 0.05,
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    width: "100%",
-                  }}
-                >
-                  <View style={{ flex: 10 }}>
-                    <ItemString item={item} schemeType={schemeType} prefix="" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    {WORKOUT_TYPES[schemeType] == STANDARD_W ? (
-                      <Icon
-                        name="person"
-                        color={
-                          item.ssid >= 0
-                            ? COLORSPALETTE[item.ssid]
-                            : theme.palette.text
-                        }
-                      />
-                    ) : (
-                      <Icon
-                        name="person"
-                        color={
-                          item.constant ? COLORSPALETTE[0] : theme.palette.text
-                        }
-                      />
-                    )}
-                  </View>
-                </View>
-              </ItemRowButton>
-            );
-          })}
-        </ScrollView>
-        {/* {
-          allowDeleteInUpdateMode?
-          :
-          <ScrollView>
-          {items.map((item, idx) => {
-            return (
-              <ItemRowButton
-                key={`item_test_${Math.random()}`}
-                idx={idx}
-                item={item}
-                showAddSSID={showAddSSID}
-                allowMarkConstant={allowMarkConstant}
-                allowDeleteInUpdateMode={allowDeleteInUpdateMode}
-                RowItemOnPress={RowItemOnPress}
-              >
-                <View
-                  style={{
-                    height: SCREEN_HEIGHT * 0.05,
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    width: "100%",
-                  }}
-                >
-                  <View style={{ flex: 10 }}>
-                    <ItemString item={item} schemeType={schemeType} prefix="" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    {WORKOUT_TYPES[schemeType] == STANDARD_W ? (
-                      <Icon
-                        name="person"
-                        color={
-                          item.ssid >= 0
-                            ? COLORSPALETTE[item.ssid]
-                            : theme.palette.text
-                        }
-                      />
-                    ) : (
-                      <Icon
-                        name="person"
-                        color={
-                          item.constant ? COLORSPALETTE[0] : theme.palette.text
-                        }
-                      />
-                    )}
-                  </View>
-                </View>
-              </ItemRowButton>
-            );
-          })}
-        </ScrollView>
-        } */}
-      </View>
+    <View style={{ flex: 1, width: "100%" }}>
+      {items.length > 0 && (
+        <ListHeader schemeType={schemeType} count={items.length} />
+      )}
+      <ScrollView nestedScrollEnabled>
+        {items.map((item, idx) => {
+          const isEditing = itemToUpdate?.uuid === item.uuid;
+          return (
+            <ItemRow
+              key={`item_${item.uuid ?? idx}`}
+              item={item}
+              idx={idx}
+              schemeType={schemeType}
+              isEditing={isEditing}
+              requestUpdate={requestUpdate}
+              removeItem={removeItem}
+              removeItemSSID={removeItemSSID}
+              addItemToSSIDWithColor={handleAddWithColor}
+              updateItemConstant={updateItemConstant}
+            />
+          );
+        })}
+      </ScrollView>
     </View>
   );
 };

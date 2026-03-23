@@ -5,8 +5,9 @@ import "react-native-gesture-handler";
 import Uploady from "@rpldy/native-uploady";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
 import { DefaultTheme, ThemeProvider } from "styled-components/native";
@@ -22,6 +23,7 @@ import auth from "../src/utils/auth";
 import { BASEURL } from "../src/utils/constants";
 
 import mobileAds from 'react-native-google-mobile-ads';
+import Purchases from 'react-native-purchases';
 
 const primaryColor = twrnc.color("bg-blue-600");
 // const secondaryColor = twrnc.color('bg-emerald-900');
@@ -228,6 +230,12 @@ export default function RootLayout() {
       .catch(error => {
         console.error('AdMob Initialization Error', error);
       });
+
+    // Configure RevenueCat — iOS only (Android publishing not active yet)
+    if (Platform.OS === 'ios') {
+      Purchases.configure({ apiKey: 'test_abGTLhwVhbpVnhikyUaiEciPyBp' });
+      Purchases.setDebugLogsEnabled(__DEV__);
+    }
   }, []);
 
   const [fontsLoaded] = useFonts({
@@ -264,13 +272,12 @@ export default function RootLayout() {
           <ThemeProvider theme={currentTheme}>
             <Uploady destination={{ url: `${BASEURL}` }}>
               <GestureHandlerRootView style={{ flex: 1 }}>
-                
-                {/* Render the Navigation Component */}
-                <AppNavigation 
-                  showBackButton={showBackButton} 
-                  setUserTheme={setUserTheme} 
-                />
-
+                <BottomSheetModalProvider>
+                  <AppNavigation
+                    showBackButton={showBackButton}
+                    setUserTheme={setUserTheme}
+                  />
+                </BottomSheetModalProvider>
               </GestureHandlerRootView>
             </Uploady>
           </ThemeProvider>

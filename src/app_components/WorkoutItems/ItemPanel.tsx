@@ -12,7 +12,6 @@ import {
 import { TSCaptionText } from "../Text/Text";
 import Icon from "react-native-vector-icons/Ionicons";
 
-import LinearGradient from "react-native-linear-gradient";
 import PenaltyDisplayModal from "../modals/PenaltyDisplayModal";
 import { COLORSPALETTE } from "@/src/utils/algos";
 
@@ -35,7 +34,7 @@ const WorkoutItemRest: FunctionComponent<{
     item.rest_duration_unit;
 
   return restDuration > 0 ? (
-    <TSCaptionText textStyles={{ alignSelf: "center", fontSize: 9 }}>
+    <TSCaptionText textStyles={{ alignSelf: "center", fontSize: 9, opacity: 0.7 }}>
       {`Rest: ${restDuration} ${DURATION_UNITS[restDurationUnit]}`}
     </TSCaptionText>
   ) : null;
@@ -53,7 +52,6 @@ const CombinedMetricRow: FunctionComponent<{
   const setsPrefix =
     schemeType === 0 && item.sets > 1 ? `${item.sets} × ` : "";
 
-  // --- Planned metric text ---
   let metricText = "";
   let recordedMetricText = "";
 
@@ -80,7 +78,6 @@ const CombinedMetricRow: FunctionComponent<{
 
   if (item.constant && metricText) metricText += " /round";
 
-  // --- Planned weight ---
   const w = displayJList(item.weights);
   const hasPlannedWeight =
     w && item.weights !== "[]" && item.weights !== "[0]";
@@ -90,7 +87,6 @@ const CombinedMetricRow: FunctionComponent<{
       : ` @ ${w}${item.weight_unit}`
     : "";
 
-  // --- Recorded weight ---
   const rw = displayJList(item.r_weights ?? "[]");
   const hasRecordedWeight =
     showRecorded &&
@@ -108,19 +104,16 @@ const CombinedMetricRow: FunctionComponent<{
 
   return (
     <View style={{ width: "100%", alignItems: "center" }}>
-      {/* Planned: metric stacked above weight */}
-      <TSCaptionText textStyles={{ textAlign: "center" }}>
+      <TSCaptionText textStyles={{ textAlign: "center", fontSize: 11, fontWeight: "600" }}>
         {metricText}
       </TSCaptionText>
       {plannedWeightStr ? (
         <TSCaptionText
-          textStyles={{ fontSize: 9, color: theme.palette.text, textAlign: "center" }}
+          textStyles={{ fontSize: 9, color: theme.palette.text, textAlign: "center", opacity: 0.65 }}
         >
           {plannedWeightStr}
         </TSCaptionText>
       ) : null}
-
-      {/* Recorded: metric stacked above weight, in purple */}
       {recordedMetricText ? (
         <TSCaptionText
           textStyles={{ color: recordedTextColor, textAlign: "center" }}
@@ -166,6 +159,7 @@ const WorkoutItemPanel: FunctionComponent<{
     isDual(item) && item.penalty != null && item.penalty.length > 0;
   const isSuperset = schemeType === 0 && item.ssid >= 0;
   const ssColor = isSuperset ? COLORSPALETTE[item.ssid] : undefined;
+  const accentColor = ssColor ?? theme.palette.AWE_Green;
 
   const navToWorkoutNameDetail = () => {
     router.push({
@@ -184,132 +178,147 @@ const WorkoutItemPanel: FunctionComponent<{
   };
 
   return (
-    <View style={{ position: "relative", marginRight: 8 }}>
-      {/* Colored left border for superset grouping */}
-      {isSuperset && (
-        <View
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 3,
-            backgroundColor: ssColor,
-            borderTopLeftRadius: 8,
-            borderBottomLeftRadius: 8,
-            zIndex: 2,
-          }}
-        />
-      )}
-
-      <LinearGradient
-        colors={["#00000000", theme.palette.AWE_Green]}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
+    <View style={{ marginRight: 8 }}>
+      {/* ── Top accent bar ── */}
+      <View
         style={{
           width: itemWidth,
-          minWidth: itemWidth,
-          height: itemHeight,
-          borderRadius: 8,
-          padding: 6,
-          paddingLeft: isSuperset ? 10 : 6,
-          justifyContent: "flex-start",
-          alignItems: "center",
+          height: 3,
+          backgroundColor: accentColor,
+          borderTopLeftRadius: 10,
+          borderTopRightRadius: 10,
+        }}
+      />
+
+      {/* ── Card body ── */}
+      <View
+        style={{
+          width: itemWidth,
+          height: itemHeight - 3,
+          backgroundColor: theme.palette.backgroundColor,
+          borderBottomLeftRadius: 10,
+          borderBottomRightRadius: 10,
+          borderWidth: 1,
+          borderTopWidth: 0,
+          borderColor: `${accentColor}22`,
+          padding: 8,
         }}
       >
-        {/* ── Name row: [idx] [Name] [penalty icon | max value] ── */}
+        {/* Index row */}
         <View
           style={{
-            width: "100%",
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
+            marginBottom: 4,
           }}
         >
-          {/* Index + optional SS badge */}
-          <View style={{ alignItems: "center", minWidth: 16 }}>
-            <TSCaptionText textStyles={{ fontSize: 8 }}>{idx}</TSCaptionText>
-            {isSuperset && (
-              <TSCaptionText textStyles={{ fontSize: 7, color: ssColor }}>
-                SS
-              </TSCaptionText>
-            )}
-          </View>
-
-          {/* Exercise name — always tappable to detail screen */}
-          <TouchableHighlight
-            onPress={navToWorkoutNameDetail}
-            underlayColor={theme.palette.transparent}
-            activeOpacity={0.9}
-            style={{ flex: 1, alignItems: "center", paddingHorizontal: 4 }}
+          {/* Index bubble */}
+          <View
+            style={{
+              width: 17,
+              height: 17,
+              borderRadius: 9,
+              backgroundColor: `${accentColor}22`,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <TSCaptionText textStyles={{ textAlign: "center" }}>
-              {item.name.name}
+            <TSCaptionText
+              textStyles={{ fontSize: 8, color: accentColor, fontWeight: "700" }}
+            >
+              {idx}
             </TSCaptionText>
-          </TouchableHighlight>
-
-          {/* Right slot: penalty warning OR max value */}
-          <View style={{ minWidth: 28, alignItems: "flex-end" }}>
-            {hasPenalty ? (
-              <TouchableHighlight
-                onPress={() => {
-                  setCurrentPenalty(item.penalty!);
-                  setShowAlert(true);
-                }}
-                underlayColor={theme.palette.transparent}
-                activeOpacity={0.9}
-              >
-                <Icon
-                  name="alert-circle-outline"
-                  color={theme.palette.text}
-                  style={{ fontSize: 14 }}
-                />
-              </TouchableHighlight>
-            ) : maxValue ? (
-              <TSCaptionText
-                textStyles={{ fontSize: 8, color: theme.palette.AWE_Green }}
-              >
-                {maxValue}
-                {maxUnit}
-              </TSCaptionText>
-            ) : null}
           </View>
+          {isSuperset && (
+            <TSCaptionText
+              textStyles={{ fontSize: 7, color: ssColor, marginLeft: 4, fontWeight: "700" }}
+            >
+              SS
+            </TSCaptionText>
+          )}
+
+          <View style={{ flex: 1 }} />
+
+          {/* Right slot: penalty icon or personal max */}
+          {hasPenalty ? (
+            <TouchableHighlight
+              onPress={() => {
+                setCurrentPenalty(item.penalty!);
+                setShowAlert(true);
+              }}
+              underlayColor="transparent"
+              activeOpacity={0.8}
+            >
+              <Icon
+                name="alert-circle-outline"
+                color={theme.palette.AWE_Red}
+                style={{ fontSize: 13 }}
+              />
+            </TouchableHighlight>
+          ) : maxValue ? (
+            <TSCaptionText
+              textStyles={{ fontSize: 8, color: theme.palette.AWE_Green, fontWeight: "600" }}
+            >
+              {maxValue}
+              {maxUnit}
+            </TSCaptionText>
+          ) : null}
         </View>
 
-        {/* ── Remaining content: distributed evenly in leftover space ── */}
-        <View
+        {/* Exercise name — tappable to detail */}
+        <TouchableHighlight
+          onPress={navToWorkoutNameDetail}
+          underlayColor={`${accentColor}14`}
+          activeOpacity={0.85}
           style={{
             flex: 1,
-            width: "100%",
-            justifyContent: "space-evenly",
+            justifyContent: "center",
             alignItems: "center",
+            borderRadius: 6,
+            marginBottom: 4,
           }}
         >
-          {/* Pause duration with clock icon */}
+          <TSCaptionText
+            textStyles={{
+              textAlign: "center",
+              fontWeight: "700",
+              fontSize: 11,
+              lineHeight: 15,
+            }}
+            numberOfLines={3}
+          >
+            {item.name.name}
+          </TSCaptionText>
+        </TouchableHighlight>
+
+        {/* Metrics + rest */}
+        <View style={{ alignItems: "center" }}>
           {item.pause_duration > 0 && (
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 2,
+              }}
+            >
               <Icon
                 name="time-outline"
                 color={theme.palette.text}
-                style={{ fontSize: 11 }}
+                style={{ fontSize: 10 }}
               />
-              <TSCaptionText textStyles={{ fontSize: 9, marginLeft: 3 }}>
+              <TSCaptionText textStyles={{ fontSize: 8, marginLeft: 2 }}>
                 {item.pause_duration}s hold
               </TSCaptionText>
             </View>
           )}
-
-          {/* Metric + weight (planned above, recorded below in purple) */}
           <CombinedMetricRow
             item={item}
             ownedByClass={ownedByClass}
             schemeType={schemeType}
           />
-
-          {/* Rest period */}
           <WorkoutItemRest item={item} ownedByClass={ownedByClass} />
         </View>
-      </LinearGradient>
+      </View>
 
       <PenaltyDisplayModal
         closeText="Close"

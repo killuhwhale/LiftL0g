@@ -116,6 +116,7 @@ const ManageCoachesModal: FunctionComponent<{
     }
   };
   return (
+    <>
     <Modal
       animationType="slide"
       transparent={true}
@@ -337,15 +338,16 @@ const ManageCoachesModal: FunctionComponent<{
           </View>
         </View>
       </View>
-      <ActionCancelModal
-        actionText="Delete user"
-        closeText="Close"
-        modalText={`Delete ${currentCoachToDelete}?`}
-        onAction={removeCoach}
-        modalVisible={showRemoveCoach}
-        onRequestClose={() => setShowRemoveCoach(false)}
-      />
     </Modal>
+    <ActionCancelModal
+      actionText="Delete user"
+      closeText="Close"
+      modalText={`Delete ${currentCoachToDelete}?`}
+      onAction={removeCoach}
+      modalVisible={showRemoveCoach}
+      onRequestClose={() => setShowRemoveCoach(false)}
+    />
+  </>
   );
 };
 

@@ -113,6 +113,7 @@ const ManageMembersModal: FunctionComponent<{
     }
   };
   return (
+    <>
     <Modal
       animationType="slide"
       transparent={true}
@@ -340,15 +341,16 @@ const ManageMembersModal: FunctionComponent<{
           </View>
         </View>
       </View>
-      <ActionCancelModal
-        actionText="Delete user"
-        closeText="Close"
-        modalText={`Delete ${currentMemberToDelete}?`}
-        onAction={removeMember}
-        modalVisible={showRemoveMember}
-        onRequestClose={() => setShowRemoveMember(false)}
-      />
     </Modal>
+    <ActionCancelModal
+      actionText="Delete user"
+      closeText="Close"
+      modalText={`Delete ${currentMemberToDelete}?`}
+      onAction={removeMember}
+      modalVisible={showRemoveMember}
+      onRequestClose={() => setShowRemoveMember(false)}
+    />
+  </>
   );
 };
 

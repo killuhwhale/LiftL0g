@@ -38,6 +38,12 @@ import {
   WORKOUT_TYPES,
 } from "@/src/app_components/shared";
 import { dateFormat } from "@/src/utils/algos";
+import {
+  buildCoachPrompt,
+  buildMemoryContext,
+  getCoachMemory,
+  getCoachProfile,
+} from "@/src/utils/coachStorage";
 import { handleGenerateWorkoutItemsResponse } from "./CreateWorkoutScreen";
 import { WorkoutNameProps } from "@/src/app_components/Cards/types";
 import { useMaxes } from "@/hooks/useMaxes";
@@ -74,18 +80,11 @@ const AIQuickWorkoutScreen: FunctionComponent = () => {
 
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
-  const [prompt, setPrompt] = useState((params.initialPrompt as string) ?? "");
+  const [prompt, setPrompt] = useState("");
   const [forDate, setForDate] = useState<Date>(
     parseWorkoutDateParam(params.initialForDate)
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
-
-  // If a coach prompt was passed in, sync it if params change
-  useEffect(() => {
-    if (params.initialPrompt) {
-      setPrompt(params.initialPrompt as string);
-    }
-  }, [params.initialPrompt]);
 
   useEffect(() => {
     setForDate(parseWorkoutDateParam(params.initialForDate));
@@ -156,8 +155,22 @@ const AIQuickWorkoutScreen: FunctionComponent = () => {
         ({ id, ...rest }: any) => rest
       );
 
+      // Build hidden coach context from stored profile + memory
+      const [coachProfile, coachMemory] = await Promise.all([
+        getCoachProfile(),
+        getCoachMemory(),
+      ]);
+      const coachContext = coachProfile?.completedOnboarding
+        ? [buildCoachPrompt(coachProfile), buildMemoryContext(coachMemory)]
+            .filter(Boolean)
+            .join("\n")
+        : "";
+      const fullPrompt = coachContext
+        ? `${coachContext}\n\n${prompt.trim()}`
+        : prompt.trim();
+
       const aiResult = await submitPrompt({
-        prompt: prompt.trim(),
+        prompt: fullPrompt,
         userID: profileData.user.id,
         userMaxes: userMaxesNoID,
         lastWorkoutGroups: (lastWorkoutGroups ?? []).slice(0, 3),

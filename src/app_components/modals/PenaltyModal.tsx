@@ -1,13 +1,23 @@
-import React, { FunctionComponent } from "react";
-import { MediumText } from "../Text/Text";
-
-import { Keyboard, Modal, TouchableWithoutFeedback, View } from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
+import { View, Pressable } from "react-native";
+import {
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetModal,
+  BottomSheetTextInput,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import { useTheme } from "styled-components/native";
-import { RegularButton } from "../Buttons/buttons";
-import Input, { AutoCaptilizeEnum } from "../Input/input";
-import { mdFontSize } from "../shared";
-import { centeredViewStyle, modalViewStyle } from "./modalStyles";
+import { TSCaptionText, TSSnippetText } from "../Text/Text";
+import { lightenHexColor } from "../shared";
+import { AutoCaptilizeEnum } from "../Input/input";
+import Icon from "react-native-vector-icons/Ionicons";
 
 const PenaltyModal: FunctionComponent<{
   modalVisible: boolean;
@@ -29,101 +39,142 @@ const PenaltyModal: FunctionComponent<{
   text,
 }) => {
   const theme = useTheme();
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ["48%"], []);
+
+  useEffect(() => {
+    if (modalVisible) {
+      sheetRef.current?.present();
+    } else {
+      sheetRef.current?.dismiss();
+    }
+  }, [modalVisible]);
+
+  const renderBackdrop = useCallback(
+    (backdropProps: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...backdropProps}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.55}
+        pressBehavior="close"
+      />
+    ),
+    []
+  );
 
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={modalVisible}
-      onRequestClose={onRequestClose}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      onDismiss={onRequestClose}
+      backdropComponent={renderBackdrop}
+      keyboardBehavior="extend"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
+      backgroundStyle={{ backgroundColor: theme.palette.darkGray }}
+      handleIndicatorStyle={{
+        backgroundColor: lightenHexColor(theme.palette.lightGray, 0.3),
+        width: 40,
+      }}
     >
-      <View style={centeredViewStyle.centeredView}>
-        <TouchableWithoutFeedback
-          onPress={() => {
-            Keyboard.dismiss();
-          }}
-          style={[
-            centeredViewStyle.centeredView,
-            { width: "100%", height: "100%" },
-          ]}
+      <BottomSheetView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 8 }}>
+        {/* Header */}
+        <View
+          style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}
         >
-          <View
+          <Icon
+            name="alert-circle-outline"
+            color={theme.palette.AWE_Yellow}
+            style={{ fontSize: 18, marginRight: 8 }}
+          />
+          <TSSnippetText textStyles={{ fontWeight: "600" }}>{bodyText}</TSSnippetText>
+        </View>
+
+        {/* Input */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-start",
+            backgroundColor: lightenHexColor(theme.palette.backgroundColor, 0.2),
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            marginBottom: 20,
+            minHeight: 80,
+          }}
+        >
+          <Icon
+            name="flame-outline"
+            color={lightenHexColor(theme.palette.text, 0.4)}
+            style={{ fontSize: 16, marginRight: 8, marginTop: 2 }}
+          />
+          <BottomSheetTextInput
+            value={text}
+            onChangeText={setText}
+            autoCapitalize={AutoCaptilizeEnum.Sent}
+            multiline
+            placeholder="Describe the penalty..."
+            placeholderTextColor={lightenHexColor(theme.palette.text, 0.35)}
             style={{
-              ...modalViewStyle.modalView,
-              backgroundColor: theme.palette.darkGray,
-              height: "90%",
+              flex: 1,
+              color: theme.palette.text,
+              fontSize: 14,
+              lineHeight: 20,
             }}
+          />
+        </View>
+
+        {/* Buttons */}
+        <View style={{ flexDirection: "row", gap: 12, paddingBottom: 24 }}>
+          <Pressable
+            onPress={() => {
+              setText("");
+              onRequestClose();
+            }}
+            style={({ pressed }) => ({
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: lightenHexColor(theme.palette.AWE_Red, 0.12),
+              borderRadius: 12,
+              paddingVertical: 13,
+              opacity: pressed ? 0.75 : 1,
+            })}
           >
-            <View style={{ height: "100%", justifyContent: "space-between" }}>
-              <View style={{ marginTop: 20, flex: 2 }}>
-                <MediumText>{bodyText}</MediumText>
-              </View>
+            <TSCaptionText
+              textStyles={{ color: theme.palette.AWE_Red, fontWeight: "700" }}
+            >
+              {closeText}
+            </TSCaptionText>
+          </Pressable>
 
-              <View style={{ marginBottom: 50, flex: 9 }}>
-                <View style={{ height: 60 }}>
-                  <Input
-                    placeholder="Penalty"
-                    onChangeText={setText}
-                    value={text}
-                    label="Penalty"
-                    autoCapitalize={AutoCaptilizeEnum.Sent}
-                    multiline
-                    containerStyle={{
-                      width: "100%",
-                      backgroundColor: theme.palette.backgroundColor,
-                      borderRadius: 8,
-                      paddingHorizontal: 8,
-                    }}
-                    onSubmitEditing={() => Keyboard.dismiss()}
-                    leading={
-                      <Icon
-                        name="flame"
-                        color={theme.palette.text}
-                        style={{ fontSize: mdFontSize }}
-                      />
-                    }
-                  />
-                </View>
-              </View>
-
-              <View
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                  justifyContent: "space-around",
-                }}
-              >
-                <RegularButton
-                  onPress={() => {
-                    setText("");
-                    onRequestClose();
-                  }}
-                  btnStyles={{
-                    backgroundColor: theme.palette.AWE_Red,
-                    justifyContent: "center",
-                    paddingHorizontal: 24,
-                  }}
-                  text={closeText}
-                />
-                <RegularButton
-                  onPress={() => {
-                    onAction(text, curItem);
-                    setText("");
-                    onRequestClose();
-                  }}
-                  btnStyles={{
-                    backgroundColor: theme.palette.AWE_Green,
-                    justifyContent: "center",
-                    paddingHorizontal: 24,
-                  }}
-                  text="Submit"
-                />
-              </View>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </View>
-    </Modal>
+          <Pressable
+            onPress={() => {
+              onAction(text, curItem);
+              setText("");
+              onRequestClose();
+            }}
+            style={({ pressed }) => ({
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: lightenHexColor(theme.palette.AWE_Green, 0.14),
+              borderRadius: 12,
+              paddingVertical: 13,
+              opacity: pressed ? 0.75 : 1,
+            })}
+          >
+            <TSCaptionText
+              textStyles={{ color: theme.palette.AWE_Green, fontWeight: "700" }}
+            >
+              Submit
+            </TSCaptionText>
+          </Pressable>
+        </View>
+      </BottomSheetView>
+    </BottomSheetModal>
   );
 };
 

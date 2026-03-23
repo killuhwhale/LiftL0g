@@ -1,14 +1,94 @@
 import React, { FunctionComponent } from "react";
-import { Platform, Pressable, SafeAreaView, View } from "react-native";
+import { View, TextInput, Pressable } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import { RegularButton } from "@/src/app_components/Buttons/buttons";
-import Input, { AutoCaptilizeEnum } from "@/src/app_components/Input/input";
-import {
-  TSParagrapghText,
-  TSSnippetText,
-} from "@/src/app_components/Text/Text";
 import { useTheme } from "styled-components/native";
-import { SCREEN_WIDTH } from "@/src/app_components/shared";
+import { TSCaptionText } from "@/src/app_components/Text/Text";
+import { lightenHexColor } from "@/src/app_components/shared";
+
+// ─── Shared field ─────────────────────────────────────────────────────────────
+
+const Field: FunctionComponent<{
+  icon: string;
+  placeholder: string;
+  value: string;
+  onChangeText(t: string): void;
+  secure?: boolean;
+  keyboardType?: "default" | "email-address";
+  trailing?: React.ReactNode;
+  error?: boolean;
+  hint?: string;
+}> = ({
+  icon,
+  placeholder,
+  value,
+  onChangeText,
+  secure,
+  keyboardType = "default",
+  trailing,
+  error,
+  hint,
+}) => {
+  const theme = useTheme();
+  const borderColor = error
+    ? theme.palette.AWE_Red
+    : value.length > 0
+    ? `${theme.palette.AWE_Green}66`
+    : lightenHexColor(theme.palette.lightGray, 0.1);
+
+  return (
+    <View style={{ marginBottom: hint ? 20 : 14 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: lightenHexColor(theme.palette.backgroundColor, 0.06),
+          borderRadius: 12,
+          borderWidth: 1.5,
+          borderColor,
+          paddingHorizontal: 14,
+          height: 52,
+        }}
+      >
+        <Icon
+          name={icon}
+          size={17}
+          color={lightenHexColor(theme.palette.text, 0.35)}
+          style={{ marginRight: 10 }}
+        />
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={lightenHexColor(theme.palette.text, 0.3)}
+          secureTextEntry={secure}
+          keyboardType={keyboardType}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={{
+            flex: 1,
+            color: theme.palette.text,
+            fontSize: 15,
+            paddingVertical: 0,
+          }}
+        />
+        {trailing}
+      </View>
+      {hint ? (
+        <TSCaptionText
+          textStyles={{
+            marginTop: 4,
+            fontSize: 11,
+            color: error ? theme.palette.AWE_Red : theme.palette.AWE_Green,
+          }}
+        >
+          {hint}
+        </TSCaptionText>
+      ) : null}
+    </View>
+  );
+};
+
+// ─── Code Reset Password form ─────────────────────────────────────────────────
 
 interface CodeResetPasswordProps {
   resetPasswordError: string;
@@ -41,179 +121,102 @@ const CodeResetPasswordPage: FunctionComponent<CodeResetPasswordProps> = ({
   setResetCode,
   setResetPassword,
   changePassword,
-  setAuthMode,
 }) => {
   const theme = useTheme();
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: theme.palette.backgroundColor }}
-    >
-      <View
-        style={{
-          justifyContent: "center",
-          padding: 24,
-          width: SCREEN_WIDTH * 0.85,
-        }}
-      >
-        {/* Card */}
+    <View>
+      {resetPasswordError.length > 0 && (
         <View
           style={{
-            backgroundColor: theme.palette.AWE_Green,
-            borderRadius: 16,
-            padding: 24,
-            elevation: 6,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.1,
-            shadowRadius: 6,
-          }}
-        >
-          {/* Instructions */}
-          <TSSnippetText
-            textStyles={{
-              textAlign: "center",
-              fontSize: 14,
-              marginBottom: 12,
-              color: theme.palette.text,
-            }}
-          >
-            Check your email for the code we sent you
-          </TSSnippetText>
-
-          {/* Server Error */}
-          {resetPasswordError.length > 0 && (
-            <TSParagrapghText
-              textStyles={{
-                textAlign: "center",
-                color: theme.palette.AWE_Red,
-                marginBottom: 12,
-              }}
-            >
-              {resetPasswordError}
-            </TSParagrapghText>
-          )}
-
-          {/* Email Input */}
-          <View style={{ height: 28, marginVertical: 6 }}>
-            <Input
-              placeholder="Email"
-              label="Email"
-              autoCapitalize={AutoCaptilizeEnum.None}
-              keyboardType="email-address"
-              value={resetEmail}
-              isError={!!resetEmailError}
-              helperText={resetEmailError}
-              onChangeText={(txt) => {
-                setResetEmail(txt);
-                if (resetEmailError && validEmailRegex.test(txt)) {
-                  setResetEmailError("");
-                } else if (!validEmailRegex.test(txt)) {
-                  setResetEmailError("Invalid email");
-                }
-              }}
-              leading={
-                <Icon
-                  name="mail-outline"
-                  size={10}
-                  color={theme.palette.AWE_Yellow}
-                />
-              }
-              containerStyle={{
-                backgroundColor: theme.palette.backgroundColor,
-                borderRadius: 8,
-              }}
-            />
-          </View>
-
-          {/* Code Input */}
-          <View style={{ height: 28, marginVertical: 6 }}>
-            <Input
-              placeholder="Reset Code"
-              label="Code"
-              autoCapitalize={AutoCaptilizeEnum.None}
-              value={resetCode}
-              onChangeText={setResetCode}
-              containerStyle={{
-                backgroundColor: theme.palette.backgroundColor,
-                borderRadius: 8,
-              }}
-              leading={
-                <Icon
-                  name="key-outline"
-                  size={10}
-                  color={theme.palette.AWE_Yellow}
-                />
-              }
-            />
-          </View>
-
-          {/* New Password Input */}
-          <View style={{ height: 28, marginVertical: 6 }}>
-            <Input
-              placeholder="New Password"
-              label="New Password"
-              secureTextEntry={hideResetPassword}
-              autoCapitalize={AutoCaptilizeEnum.None}
-              value={resetPassword}
-              onChangeText={setResetPassword}
-              leading={
-                <Icon
-                  name={
-                    hideResetPassword
-                      ? "lock-closed-outline"
-                      : "lock-open-outline"
-                  }
-                  size={10}
-                  color={theme.palette.AWE_Yellow}
-                  onPress={() => setHideResetPassword(!hideResetPassword)}
-                />
-              }
-              trailing={
-                <Icon
-                  name={hideResetPassword ? "eye-off-outline" : "eye-outline"}
-                  size={16}
-                  color={theme.palette.text}
-                  onPress={() => setHideResetPassword(!hideResetPassword)}
-                />
-              }
-              containerStyle={{
-                backgroundColor: theme.palette.backgroundColor,
-                borderRadius: 8,
-              }}
-            />
-          </View>
-
-          {/* Reset Button */}
-          <View style={{ marginTop: 16 }}>
-            <RegularButton
-              onPress={changePassword}
-              btnStyles={{
-                backgroundColor: theme.palette.primary.main,
-                paddingVertical: 12,
-                borderRadius: 8,
-              }}
-              text="Reset Password"
-            />
-          </View>
-        </View>
-
-        {/* Back to Sign In */}
-        <View
-          style={{
+            backgroundColor: `${theme.palette.AWE_Red}15`,
+            borderRadius: 10,
+            padding: 10,
+            marginBottom: 14,
             flexDirection: "row",
-            justifyContent: "center",
-            marginTop: 24,
+            alignItems: "center",
           }}
         >
-          <Pressable onPress={() => setAuthMode(0)}>
-            <TSSnippetText textStyles={{ color: theme.palette.AWE_Green }}>
-              Back to Sign In
-            </TSSnippetText>
-          </Pressable>
+          <Icon
+            name="alert-circle-outline"
+            size={15}
+            color={theme.palette.AWE_Red}
+            style={{ marginRight: 6 }}
+          />
+          <TSCaptionText
+            textStyles={{ color: theme.palette.AWE_Red, flex: 1, fontSize: 12 }}
+          >
+            {resetPasswordError}
+          </TSCaptionText>
         </View>
-      </View>
-    </SafeAreaView>
+      )}
+
+      <Field
+        icon="mail-outline"
+        placeholder="Email address"
+        value={resetEmail}
+        onChangeText={(txt) => {
+          setResetEmail(txt);
+          if (resetEmailError && validEmailRegex.test(txt)) {
+            setResetEmailError("");
+          }
+        }}
+        keyboardType="email-address"
+        error={!!resetEmailError}
+        hint={resetEmailError || undefined}
+      />
+
+      <Field
+        icon="key-outline"
+        placeholder="Reset code"
+        value={resetCode}
+        onChangeText={setResetCode}
+      />
+
+      <Field
+        icon="lock-closed-outline"
+        placeholder="New password"
+        value={resetPassword}
+        onChangeText={setResetPassword}
+        secure={hideResetPassword}
+        trailing={
+          <Pressable
+            onPress={() => setHideResetPassword(!hideResetPassword)}
+            hitSlop={8}
+          >
+            <Icon
+              name={hideResetPassword ? "eye-off-outline" : "eye-outline"}
+              size={18}
+              color={lightenHexColor(theme.palette.text, 0.4)}
+            />
+          </Pressable>
+        }
+      />
+
+      <Pressable
+        onPress={changePassword}
+        style={({ pressed }) => ({
+          backgroundColor: theme.palette.AWE_Green,
+          borderRadius: 12,
+          paddingVertical: 14,
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "row",
+          marginTop: 4,
+          opacity: pressed ? 0.75 : 1,
+        })}
+      >
+        <Icon
+          name="checkmark-circle-outline"
+          size={17}
+          color="white"
+          style={{ marginRight: 7 }}
+        />
+        <TSCaptionText textStyles={{ color: "white", fontWeight: "700", fontSize: 14 }}>
+          Reset Password
+        </TSCaptionText>
+      </Pressable>
+    </View>
   );
 };
 

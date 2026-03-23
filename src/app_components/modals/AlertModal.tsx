@@ -1,10 +1,20 @@
-import React, { FunctionComponent } from "react";
-import { TSParagrapghText } from "../Text/Text";
-
-import { Modal, TouchableWithoutFeedback, View } from "react-native";
-import { useTheme } from "styled-components";
-import { RegularButton } from "../Buttons/buttons";
-import { centeredViewStyle, modalViewStyle } from "./modalStyles";
+import React, {
+  FunctionComponent,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import { View, Pressable } from "react-native";
+import {
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetModal,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
+import { useTheme } from "styled-components/native";
+import { TSParagrapghText, TSCaptionText } from "../Text/Text";
+import { lightenHexColor } from "../shared";
+import Icon from "react-native-vector-icons/Ionicons";
 
 const AlertModal: FunctionComponent<{
   modalVisible: boolean;
@@ -13,48 +23,79 @@ const AlertModal: FunctionComponent<{
   bodyText: string;
 }> = ({ modalVisible, onRequestClose, closeText, bodyText }) => {
   const theme = useTheme();
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ["35%"], []);
+
+  React.useEffect(() => {
+    if (modalVisible) {
+      sheetRef.current?.present();
+    } else {
+      sheetRef.current?.dismiss();
+    }
+  }, [modalVisible]);
+
+  const renderBackdrop = useCallback(
+    (backdropProps: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...backdropProps}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.55}
+        pressBehavior="close"
+      />
+    ),
+    []
+  );
 
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={modalVisible}
-      onRequestClose={onRequestClose}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      onDismiss={onRequestClose}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{ backgroundColor: theme.palette.darkGray }}
+      handleIndicatorStyle={{
+        backgroundColor: lightenHexColor(theme.palette.lightGray, 0.3),
+        width: 40,
+      }}
     >
-      <View style={centeredViewStyle.centeredView}>
-        <TouchableWithoutFeedback onPress={onRequestClose}>
-          <View
-            style={{
-              ...modalViewStyle.modalView,
-              backgroundColor: theme.palette.darkGray,
-              height: "90%",
-              width: "90%",
-            }}
+      <BottomSheetView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+        {/* Body */}
+        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 4 }}>
+          <TSParagrapghText textStyles={{ textAlign: "center" }}>
+            {bodyText}
+          </TSParagrapghText>
+        </View>
+
+        {/* Close button */}
+        <Pressable
+          onPress={onRequestClose}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: lightenHexColor(theme.palette.primary.main, 0.14),
+            borderRadius: 12,
+            paddingVertical: 13,
+            marginTop: 16,
+            marginBottom: 28,
+            opacity: pressed ? 0.75 : 1,
+          })}
+        >
+          <Icon
+            name="checkmark-outline"
+            color={theme.palette.primary.main}
+            style={{ fontSize: 16, marginRight: 6 }}
+          />
+          <TSCaptionText
+            textStyles={{ color: theme.palette.primary.main, fontWeight: "700" }}
           >
-            <View
-              style={{
-                height: "100%",
-                flex: 1,
-                justifyContent: "space-between",
-              }}
-            >
-              <View style={{ marginTop: 50 }}>
-                <TSParagrapghText>{bodyText}</TSParagrapghText>
-              </View>
-              <RegularButton
-                onPress={() => {
-                  onRequestClose();
-                }}
-                btnStyles={{
-                  backgroundColor: theme.palette.tertiary.main,
-                }}
-                text={closeText ?? "Close"}
-              />
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </View>
-    </Modal>
+            {closeText ?? "Close"}
+          </TSCaptionText>
+        </Pressable>
+      </BottomSheetView>
+    </BottomSheetModal>
   );
 };
 

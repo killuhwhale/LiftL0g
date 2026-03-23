@@ -431,28 +431,26 @@ const Profile: FunctionComponent = () => {
       const setup = async () => {
         try {
           if (Platform.OS == "ios") {
-            await Purchases.configure({
-              apiKey: "appl_oJUBkeeihLnvPlQUJVxhUTCkHWo",
-            });
-            Purchases.invalidateCustomerInfoCache();
-
-            const products = await Purchases.getProducts(["sub_remove_ads"]);
-            console.log("Got ios product: ", products);
-            loadedProductsRef.current = true;
-            setCurProducts(products);
+            // RC is configured once at app startup in _layout.tsx
             await Purchases.setAttributes({
               userID: data?.user.id.toString(),
             });
             await Purchases.syncAttributesAndOfferingsIfNeeded();
+
+            const offerings = await Purchases.getOfferings();
+            const subOffering = offerings.all["monthly_membership_offering"];
+            const products = subOffering?.availablePackages.map((p) => p.product) ?? [];
+            console.log("Got subscription products from RC offering: ", products);
+            loadedProductsRef.current = true;
+            setCurProducts(products);
           } else if (Platform.OS == "android") {
-            console.log("Skipping Android, Dev account deleted...");
+            console.log("Skipping Android, not publishing yet.");
           }
         } catch (err) {
           console.log("Error getting offerings: ", err);
         }
       };
 
-      Purchases.setDebugLogsEnabled(true);
       setup()
         .then(() => (loadedProductsRef.current = true))
         .catch(console.log);

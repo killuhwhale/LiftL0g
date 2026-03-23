@@ -8,9 +8,7 @@ import React, {
 import {
   StyleSheet,
   View,
-  Switch,
   ScrollView,
-  TouchableWithoutFeedback,
   ActivityIndicator,
   TouchableHighlight,
 } from "react-native";
@@ -28,6 +26,7 @@ import {
 import {
   Container,
   SCREEN_HEIGHT,
+  SCREEN_WIDTH,
   WORKOUT_TYPES,
   STANDARD_W,
   ROUNDS_W,
@@ -603,6 +602,15 @@ const CreateWorkoutScreen: FunctionComponent = () => {
     }
   };
 
+  const addItemToSSIDWithColor = (idx: number, colorIdx: number) => {
+    const newItems = [...items];
+    const newItem = newItems[idx];
+    newItem.ssid = newItem.ssid === colorIdx ? -1 : colorIdx;
+    newItems[idx] = newItem;
+    setCurColor(colorIdx);
+    setItems(newItems);
+  };
+
   const updateItemConstant = (idx: number) => {
     // Determines if an item should ignore a RepScheme.
     // "Do a constant number of reps each round."
@@ -632,224 +640,259 @@ const CreateWorkoutScreen: FunctionComponent = () => {
   };
 
   const isUpdateMode = initItems.length > 2 || initItems.length == 0;
-  const INPUT_HEADER_HEIGHT = 25;
+
+  // Workout type badge color
+  const typeColor =
+    schemeType === 0
+      ? theme.palette.AWE_Green
+      : schemeType === 1
+      ? theme.palette.AWE_Blue
+      : schemeType === 2
+      ? theme.palette.AWE_Yellow
+      : theme.palette.AWE_Red;
 
   return (
     <PageContainer style={{ flex: 1, flexDirection: "column" }}>
-      <View style={{ flex: 20, flexDirection: "column", width: "100%" }}>
-        <View
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            justifyContent: "center",
-            width: "100%",
-          }}
-        >
-          {isWNLoading ? <FullScreenSpinner></FullScreenSpinner> : <></>}
-          <View style={{ flex: 1 }}></View>
-          <View style={{ flex: 5 }}>
-            <TSTitleText textStyles={{ textAlign: "center", marginBottom: 4 }}>
-              Create Workout - {workoutGroupTitle}
-            </TSTitleText>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Icon
-              onPress={() => setShowChatModal(true)}
-              name="sparkles-outline"
-              color={theme.palette.AWE_Red}
-              style={{ fontSize: 24 }}
-            />
-          </View>
-        </View>
-        <View style={{ flex: 10 }}>
-          <ScrollView style={{ flexDirection: "column" }}>
-            {createWorkoutError.length ? (
-              <TSTitleText textStyles={{ color: "red" }}>
-                {createWorkoutError}
-              </TSTitleText>
-            ) : (
-              <></>
-            )}
+      {isWNLoading && <FullScreenSpinner />}
 
-            <View
-              style={{
-                flexShrink: 2,
-                flexGrow: 3,
-                flexBasis: 0,
-
-                justifyContent: "center",
-                width: "100%",
-              }}
-            >
-              <View style={{ height: INPUT_HEADER_HEIGHT, marginBottom: 8 }}>
-                <Input
-                  onChangeText={(t) => {
-                    setTitle(limitTextLength(t, WorkoutTitleLimit));
-                    setCreateWorkoutError("");
-                    setIsCreating(false);
-                  }}
-                  value={title}
-                  label=""
-                  testID={TestIDs.CreateWorkoutTitleField.name()}
-                  placeholder="Title"
-                  inputStyles={{
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  containerStyle={{
-                    width: "100%",
-                    backgroundColor: theme.palette.darkGray,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                  }}
-                  leading={
-                    <Icon
-                      name="remove-outline"
-                      color={theme.palette.text}
-                      style={{ fontSize: mdFontSize }}
-                    />
-                  }
-                />
-              </View>
-
-              <View style={{ height: INPUT_HEADER_HEIGHT, marginBottom: 8 }}>
-                <Input
-                  label=""
-                  placeholder="Description"
-                  testID={TestIDs.CreateWorkoutDescField.name()}
-                  value={desc}
-                  onChangeText={(t) =>
-                    setDesc(limitTextLength(t, WorkoutDescLimit))
-                  }
-                  containerStyle={{
-                    width: "100%",
-                    backgroundColor: theme.palette.darkGray,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                  }}
-                  leading={
-                    <Icon
-                      name="remove-outline"
-                      color={theme.palette.text}
-                      style={{ fontSize: mdFontSize }}
-                    />
-                  }
-                />
-              </View>
-
-              <SchemeField
-                schemeType={schemeType}
-                schemeRounds={schemeRounds}
-                setSchemeRounds={(t) => {
-                  schemeRoundsRef.current = t;
-                  setSchemeRounds(limitTextLength(t, SchemeTextLimit));
-                }}
-                setInstruction={(t) =>
-                  setInstruction(
-                    limitTextLength(t, CreateSchemeInstructionLimit)
-                  )
-                }
-                schemeRoundsError={schemeRoundsError}
-                setSchemeRoundsError={setSchemeRoundsError}
-                instruction={instruction}
-              />
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                width: "100%",
-                justifyContent: "center",
-              }}
-            >
-              <AddItem
-                addWorkoutItem={addWorkoutItem}
-                schemeType={schemeType}
-                itemToUpdate={itemToUpdate}
-                workoutNames={workoutNames}
-                toggleUpdateHack={toggleUpdateHack}
-                requestUpdate={requestUpdate}
-              />
-            </View>
-
-            <View
-              style={{
-                flex: 6,
-                justifyContent: "flex-start",
-                alignContent: "flex-start",
-                alignItems: "flex-start",
-                height: "100%",
-                width: "100%",
-              }}
-            >
-              <View style={{ height: "100%", width: "100%", marginTop: 8 }}>
-                {schemeType <= 2 ? (
-                  <CreateWorkoutItemList
-                    items={items}
-                    schemeType={schemeType}
-                    curColor={curColor}
-                    showAddSSID={showAddSSID}
-                    itemToUpdate={itemToUpdate}
-                    setShowAddSSID={setShowAddSSID}
-                    setCurColor={setCurColor}
-                    removeItemSSID={removeItemSSID}
-                    addItemToSSID={addItemToSSID}
-                    updateItemConstant={updateItemConstant}
-                    removeItem={removeItem}
-                    requestUpdate={requestUpdate}
-                  />
-                ) : (
-                  <CreateWorkoutDualItemList
-                    items={items as WorkoutDualItemProps[]}
-                    schemeType={schemeType}
-                    itemToUpdate={itemToUpdate}
-                    removeItem={removeItem}
-                    addPenalty={addPenalty}
-                    requestUpdate={requestUpdate}
-                  />
-                )}
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      </View>
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <View
         style={{
-          flex: 1,
           flexDirection: "row",
-          justifyContent: "flex-end",
+          alignItems: "center",
+          paddingHorizontal: 4,
+          paddingTop: 8,
+          paddingBottom: 10,
         }}
       >
+        <View style={{ flex: 1 }}>
+          <TSListTitleText
+            numberOfLines={1}
+            textStyles={{ fontWeight: "700", fontSize: 15 }}
+          >
+            {isUpdateMode ? "Edit" : "New"} Workout
+          </TSListTitleText>
+          <TSCaptionText
+            numberOfLines={1}
+            textStyles={{ opacity: 0.55, fontSize: 11 }}
+          >
+            {workoutGroupTitle}
+          </TSCaptionText>
+        </View>
+
+        {/* Workout type badge */}
+        <View
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 20,
+            backgroundColor: `${typeColor}22`,
+            borderWidth: 1,
+            borderColor: `${typeColor}55`,
+            marginRight: 12,
+          }}
+        >
+          <SmallText textStyles={{ color: typeColor, fontWeight: "700", fontSize: 11 }}>
+            {WORKOUT_TYPES[schemeType]}
+          </SmallText>
+        </View>
+
+        {/* AI Coach button */}
+        <TouchableHighlight
+          onPress={() => setShowChatModal(true)}
+          style={{
+            borderRadius: 20,
+            padding: 8,
+            backgroundColor: `${theme.palette.AWE_Red}18`,
+          }}
+          underlayColor={`${theme.palette.AWE_Red}33`}
+        >
+          <Icon
+            name="sparkles-outline"
+            color={theme.palette.AWE_Red}
+            style={{ fontSize: 20 }}
+          />
+        </TouchableHighlight>
+      </View>
+
+      <View style={{ flex: 10 }}>
+        <ScrollView style={{ flexDirection: "column" }}>
+          {createWorkoutError.length ? (
+            <TSTitleText textStyles={{ color: "red" }}>
+              {createWorkoutError}
+            </TSTitleText>
+          ) : (
+            <></>
+          )}
+
+          <View
+            style={{
+              justifyContent: "center",
+              width: "100%",
+              gap: 8,
+              marginBottom: 4,
+            }}
+          >
+            <View>
+              <Input
+                onChangeText={(t) => {
+                  setTitle(limitTextLength(t, WorkoutTitleLimit));
+                  setCreateWorkoutError("");
+                  setIsCreating(false);
+                }}
+                value={title}
+                label=""
+                testID={TestIDs.CreateWorkoutTitleField.name()}
+                placeholder="Workout title"
+                inputStyles={{
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                containerStyle={{
+                  width: "100%",
+                  backgroundColor: theme.palette.darkGray,
+                  borderRadius: 10,
+                  paddingHorizontal: 10,
+                  height: 44,
+                }}
+                leading={
+                  <Icon
+                    name="text-outline"
+                    color={`${theme.palette.text}66`}
+                    style={{ fontSize: 16 }}
+                  />
+                }
+              />
+            </View>
+
+            <View>
+              <Input
+                label=""
+                placeholder="Description (optional)"
+                testID={TestIDs.CreateWorkoutDescField.name()}
+                value={desc}
+                onChangeText={(t) =>
+                  setDesc(limitTextLength(t, WorkoutDescLimit))
+                }
+                containerStyle={{
+                  width: "100%",
+                  backgroundColor: theme.palette.darkGray,
+                  borderRadius: 10,
+                  paddingHorizontal: 10,
+                  height: 44,
+                }}
+                leading={
+                  <Icon
+                    name="document-text-outline"
+                    color={`${theme.palette.text}66`}
+                    style={{ fontSize: 16 }}
+                  />
+                }
+              />
+            </View>
+
+            <SchemeField
+              schemeType={schemeType}
+              schemeRounds={schemeRounds}
+              setSchemeRounds={(t) => {
+                schemeRoundsRef.current = t;
+                setSchemeRounds(limitTextLength(t, SchemeTextLimit));
+              }}
+              setInstruction={(t) =>
+                setInstruction(
+                  limitTextLength(t, CreateSchemeInstructionLimit)
+                )
+              }
+              schemeRoundsError={schemeRoundsError}
+              setSchemeRoundsError={setSchemeRoundsError}
+              instruction={instruction}
+            />
+          </View>
+
+          {/* Add item form */}
+          <AddItem
+            addWorkoutItem={addWorkoutItem}
+            schemeType={schemeType}
+            itemToUpdate={itemToUpdate}
+            workoutNames={workoutNames}
+            toggleUpdateHack={toggleUpdateHack}
+            requestUpdate={requestUpdate}
+          />
+
+          {/* Item list */}
+          <View style={{ width: "100%", marginTop: 4, paddingBottom: 20 }}>
+            {schemeType <= 2 ? (
+              <CreateWorkoutItemList
+                items={items}
+                schemeType={schemeType}
+                curColor={curColor}
+                showAddSSID={showAddSSID}
+                itemToUpdate={itemToUpdate}
+                setShowAddSSID={setShowAddSSID}
+                setCurColor={setCurColor}
+                removeItemSSID={removeItemSSID}
+                addItemToSSID={addItemToSSID}
+                addItemToSSIDWithColor={addItemToSSIDWithColor}
+                updateItemConstant={updateItemConstant}
+                removeItem={removeItem}
+                requestUpdate={requestUpdate}
+              />
+            ) : (
+              <CreateWorkoutDualItemList
+                items={items as WorkoutDualItemProps[]}
+                schemeType={schemeType}
+                itemToUpdate={itemToUpdate}
+                removeItem={removeItem}
+                addPenalty={addPenalty}
+                requestUpdate={requestUpdate}
+              />
+            )}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* ── Save / Create button ─────────────────────────────────────────── */}
+      <View style={{ paddingVertical: 10, width: SCREEN_WIDTH, paddingHorizontal: SCREEN_WIDTH * 0.06 }}>
         {!isCreating ? (
           <TouchableHighlight
             testID={TestIDs.CreateWorkoutCreateBtn.name()}
             style={{
-              marginBottom: 6,
-              flex: 1,
-              backgroundColor: theme.palette.backgroundColor,
-              borderWidth: 1,
-              borderColor: "white",
-              borderRadius: 8,
+              borderRadius: 12,
+              overflow: "hidden",
+              backgroundColor: theme.palette.AWE_Green,
             }}
+            underlayColor={`${theme.palette.AWE_Green}cc`}
             onPress={() => _createWorkoutWithItems(isUpdateMode)}
           >
             <View
               style={{
-                width: "100%",
-                flex: 1,
+                paddingVertical: 15,
+                alignItems: "center",
                 justifyContent: "center",
-                borderRadius: 8,
+                flexDirection: "row",
               }}
             >
-              <TSCaptionText
-                textStyles={{ textAlign: "center", fontWeight: "bold" }}
+              <Icon
+                name={isUpdateMode ? "checkmark-outline" : "add"}
+                size={18}
+                color={theme.palette.backgroundColor}
+                style={{ marginRight: 6 }}
+              />
+              <TSParagrapghText
+                textStyles={{
+                  color: theme.palette.backgroundColor,
+                  fontWeight: "700",
+                  fontSize: 15,
+                }}
               >
-                {isUpdateMode ? "Update" : "Create"}
-              </TSCaptionText>
+                {isUpdateMode ? "Save Changes" : "Create Workout"}
+              </TSParagrapghText>
             </View>
           </TouchableHighlight>
         ) : (
-          <ActivityIndicator size="small" color={theme.palette.text} />
+          <View style={{ alignItems: "center", paddingVertical: 15 }}>
+            <ActivityIndicator size="small" color={theme.palette.AWE_Green} />
+          </View>
         )}
       </View>
 

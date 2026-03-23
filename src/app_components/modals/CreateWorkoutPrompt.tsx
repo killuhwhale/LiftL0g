@@ -1,30 +1,27 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { View, Pressable, ActivityIndicator } from "react-native";
 import {
-  Modal,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+} from "@gorhom/bottom-sheet";
 import { useTheme } from "styled-components/native";
 import Icon from "react-native-vector-icons/Ionicons";
 import {
   useCreateWorkoutPromptMutation,
   useGetLastXWorkoutGroupsQuery,
-  useGetProfileWorkoutGroupsQuery,
-} from "@/src/redux/api/apiSlice"; // <-- Replace with your actual mutation
+} from "@/src/redux/api/apiSlice";
 import {
   TSCaptionText,
-  TSInputText,
   TSInputTextSm,
   TSSnippetText,
   TSTitleText,
 } from "../Text/Text";
-import { isDateInFuture, SCREEN_HEIGHT } from "../shared";
+import { isDateInFuture, lightenHexColor } from "../shared";
 import { AnyWorkoutItem } from "../Cards/types";
 import { useMaxes } from "@/hooks/useMaxes";
-import FullScreenSpinner from "../Spinner";
 import { useRouter } from "expo-router";
 
 type ChatPromptModalProps = {
@@ -50,33 +47,49 @@ const CreateWorkoutPrompt: React.FC<ChatPromptModalProps> = ({
   onClose,
 }) => {
   const theme = useTheme();
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ["85%"], []);
   const [text, setText] = useState("");
+  const [showBecomeMember, setShowBecomeMember] = useState(false);
 
   const [submitPrompt, { isLoading }] = useCreateWorkoutPromptMutation();
-  // Get last 10 workouts, should already be fetched from home page...
 
   const {
     userId,
     profileData,
     workoutItemMaxes,
-    workoutItemMaxesMap,
     isLoading: isMaxesLoading,
-    error,
   } = useMaxes();
 
-  const {
-    data: lastWorkoutGroups,
-    isLoading: isLoadingWG,
-    isSuccess: isSuccessWG,
-    isError: isErrorWG,
-    error: errorWG,
-  } = useGetLastXWorkoutGroupsQuery(userId, { skip: isMaxesLoading });
+  const { data: lastWorkoutGroups } = useGetLastXWorkoutGroupsQuery(userId, {
+    skip: isMaxesLoading,
+  });
 
-  const [showBecomeMember, setShowBecomeMember] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (visible) {
+      sheetRef.current?.present();
+    } else {
+      sheetRef.current?.dismiss();
+    }
+  }, [visible]);
+
+  const renderBackdrop = useCallback(
+    (backdropProps: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...backdropProps}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.55}
+        pressBehavior="close"
+      />
+    ),
+    []
+  );
 
   const handleSubmit = async () => {
     if (!text.trim()) return;
-    console.log("profileData.user: ", profileData.user);
     if (!profileData.user) return;
     if (!isDateInFuture(profileData.user)) {
       setShowBecomeMember(true);
@@ -84,18 +97,14 @@ const CreateWorkoutPrompt: React.FC<ChatPromptModalProps> = ({
     }
 
     try {
-      const userMaxesNoID = workoutItemMaxes.map(
-        ({ id, ...rest }: any) => rest
-      ); // Save on some input tokens, remove id
-
+      const userMaxesNoID = workoutItemMaxes.map(({ id, ...rest }: any) => rest);
       const result = await submitPrompt({
         prompt: text,
         userID,
         userMaxes: userMaxesNoID,
-        lastWorkoutGroups: lastWorkoutGroups,
+        lastWorkoutGroups,
         schemeTypeText,
       }).unwrap();
-      console.log("Prompt result: ", result);
 
       if (result.data) {
         setText("");
@@ -106,173 +115,128 @@ const CreateWorkoutPrompt: React.FC<ChatPromptModalProps> = ({
       console.error("Submission failed:", err);
     }
   };
-  const router = useRouter();
 
   const navHome = () => {
     onClose();
     router.push("/(tabs)/Profile");
   };
 
-  if (isLoading || isMaxesLoading) {
-    return <FullScreenSpinner></FullScreenSpinner>;
-  }
-
-  console.log("lastWorkoutGroup s: ", lastWorkoutGroups);
-
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      onRequestClose={onClose}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      onDismiss={onClose}
+      backdropComponent={renderBackdrop}
+      keyboardBehavior="extend"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
+      backgroundStyle={{ backgroundColor: theme.palette.backgroundColor }}
+      handleIndicatorStyle={{
+        backgroundColor: lightenHexColor(theme.palette.lightGray, 0.3),
+        width: 40,
+      }}
     >
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: theme.palette.transparent,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 20,
-        }}
+      <BottomSheetScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <TouchableOpacity
-          onPress={() => onClose()}
+        {/* Header */}
+        <View
           style={{
-            width: "100%",
-            height: SCREEN_HEIGHT * 0.8,
-            backgroundColor: theme.palette.backgroundColor,
-            borderRadius: 16,
-            padding: 20,
-            elevation: 6,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 20,
+            marginTop: 4,
           }}
         >
-          <View
-            style={{
-              width: "100%",
-              backgroundColor: theme.palette.backgroundColor,
-              borderRadius: 16,
-              padding: 20,
-              elevation: 6,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <TSTitleText
-                textStyles={{
-                  color: theme.palette.text,
-                  fontWeight: "600",
-                }}
-              >
-                Create a wokout
-              </TSTitleText>
-
-              <TouchableOpacity onPress={onClose}>
-                <Icon name="close" size={24} color={theme.palette.text} />
-              </TouchableOpacity>
-            </View>
-
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <TSInputText
-                textStyles={{
-                  color: theme.palette.text,
-                  fontWeight: "300",
-                }}
-              >
-                What is your goal?
-              </TSInputText>
-            </View>
-
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <TSInputTextSm
-                textStyles={{
-                  color: theme.palette.AWE_Green,
-                  fontWeight: "600",
-                }}
-              >
-                Note: The last 10 workouts will be included.
-              </TSInputTextSm>
-            </View>
-
-            <View
-              style={{
-                width: "100%",
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
-                maxHeight: SCREEN_HEIGHT * 0.42,
-              }}
-            >
-              <TextInput
-                placeholder="Type your prompt..."
-                placeholderTextColor={theme.palette.gray}
-                value={text}
-                multiline
-                numberOfLines={4}
-                onChangeText={setText}
-                style={{
-                  borderColor: theme.palette.gray,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  padding: 12,
-                  color: theme.palette.text,
-                  backgroundColor: theme.palette.IP_TextInput_bg,
-                  fontSize: 14,
-                  marginBottom: 16,
-                  width: "100%",
-                }}
-              />
-            </View>
-            <TouchableOpacity
-              disabled={isLoading}
-              onPress={showBecomeMember ? navHome : handleSubmit}
-              style={{
-                backgroundColor: showBecomeMember
-                  ? theme.palette.AWE_Blue
-                  : theme.palette.AWE_Green,
-                paddingVertical: 12,
-                borderRadius: 12,
-                justifyContent: "center",
-                alignItems: "center",
-                opacity: isLoading ? 0.5 : 1,
-              }}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={theme.palette.white} />
-              ) : showBecomeMember ? (
-                <View>
-                  <TSSnippetText>Become a member!</TSSnippetText>
-                </View>
-              ) : (
-                <Text style={{ color: theme.palette.white, fontWeight: "600" }}>
-                  Submit
-                </Text>
-              )}
-            </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Icon
+              name="sparkles-outline"
+              color={theme.palette.AWE_Green}
+              style={{ fontSize: 22, marginRight: 10 }}
+            />
+            <TSTitleText textStyles={{ marginVertical: 0, fontWeight: "700" }}>
+              AI Workout Builder
+            </TSTitleText>
           </View>
-        </TouchableOpacity>
-      </View>
-    </Modal>
+          <Pressable onPress={onClose} hitSlop={10}>
+            <Icon name="close" size={22} color={lightenHexColor(theme.palette.text, 0.4)} />
+          </Pressable>
+        </View>
+
+        {/* Subtext */}
+        <TSSnippetText
+          textStyles={{ color: lightenHexColor(theme.palette.text, 0.5), marginBottom: 6 }}
+        >
+          What is your goal?
+        </TSSnippetText>
+        <TSInputTextSm
+          textStyles={{ color: theme.palette.AWE_Green, fontWeight: "600", marginBottom: 16 }}
+        >
+          Your last 10 workouts will be included for context.
+        </TSInputTextSm>
+
+        {/* Text input */}
+        <BottomSheetTextInput
+          placeholder="Describe what you want to work on..."
+          placeholderTextColor={lightenHexColor(theme.palette.text, 0.35)}
+          value={text}
+          multiline
+          numberOfLines={5}
+          onChangeText={setText}
+          style={{
+            borderColor: lightenHexColor(theme.palette.lightGray, 0.15),
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 14,
+            color: theme.palette.text,
+            backgroundColor: lightenHexColor(theme.palette.darkGray, 0.1),
+            fontSize: 14,
+            lineHeight: 22,
+            marginBottom: 24,
+            minHeight: 120,
+            textAlignVertical: "top",
+          }}
+        />
+
+        {/* Submit button */}
+        <Pressable
+          disabled={isLoading || isMaxesLoading}
+          onPress={showBecomeMember ? navHome : handleSubmit}
+          style={({ pressed }) => ({
+            backgroundColor: showBecomeMember
+              ? theme.palette.AWE_Blue
+              : theme.palette.AWE_Green,
+            paddingVertical: 14,
+            borderRadius: 14,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed || isLoading || isMaxesLoading ? 0.6 : 1,
+          })}
+        >
+          {isLoading ? (
+            <ActivityIndicator color={theme.palette.white} />
+          ) : showBecomeMember ? (
+            <TSSnippetText textStyles={{ color: "white", fontWeight: "700" }}>
+              Become a Member
+            </TSSnippetText>
+          ) : (
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Icon
+                name="send-outline"
+                color="white"
+                style={{ fontSize: 16, marginRight: 8 }}
+              />
+              <TSCaptionText textStyles={{ color: "white", fontWeight: "700" }}>
+                Generate Workout
+              </TSCaptionText>
+            </View>
+          )}
+        </Pressable>
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 };
 

@@ -1,16 +1,103 @@
 import React, { FunctionComponent } from "react";
-import { Pressable, SafeAreaView, View } from "react-native";
-import { RegularButton } from "@/src/app_components/Buttons/buttons";
-import { TestIDs } from "@/src/utils/constants";
-import {
-  TSCaptionText,
-  TSParagrapghText,
-  TSSnippetText,
-} from "@/src/app_components/Text/Text";
-import Input, { AutoCaptilizeEnum } from "@/src/app_components/Input/input";
+import { View, TextInput, Pressable } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useTheme } from "styled-components/native";
-import { SCREEN_WIDTH } from "@/src/app_components/shared";
+import {
+  TSCaptionText,
+  TSSnippetText,
+} from "@/src/app_components/Text/Text";
+import { lightenHexColor } from "@/src/app_components/shared";
+import { TestIDs } from "@/src/utils/constants";
+
+// ─── Shared field ─────────────────────────────────────────────────────────────
+
+const Field: FunctionComponent<{
+  icon: string;
+  placeholder: string;
+  value: string;
+  onChangeText(t: string): void;
+  secure?: boolean;
+  keyboardType?: "default" | "email-address";
+  autoCapitalize?: "none" | "sentences";
+  trailing?: React.ReactNode;
+  error?: boolean;
+  hint?: string;
+  testID?: string;
+}> = ({
+  icon,
+  placeholder,
+  value,
+  onChangeText,
+  secure,
+  keyboardType = "default",
+  autoCapitalize = "none",
+  trailing,
+  error,
+  hint,
+  testID,
+}) => {
+  const theme = useTheme();
+  const borderColor = error
+    ? theme.palette.AWE_Red
+    : value.length > 0
+    ? `${theme.palette.AWE_Green}66`
+    : lightenHexColor(theme.palette.lightGray, 0.1);
+
+  return (
+    <View style={{ marginBottom: hint ? 20 : 14 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: lightenHexColor(theme.palette.backgroundColor, 0.06),
+          borderRadius: 12,
+          borderWidth: 1.5,
+          borderColor,
+          paddingHorizontal: 14,
+          height: 52,
+        }}
+      >
+        <Icon
+          name={icon}
+          size={17}
+          color={lightenHexColor(theme.palette.text, 0.35)}
+          style={{ marginRight: 10 }}
+        />
+        <TextInput
+          testID={testID}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={lightenHexColor(theme.palette.text, 0.3)}
+          secureTextEntry={secure}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={false}
+          style={{
+            flex: 1,
+            color: theme.palette.text,
+            fontSize: 15,
+            paddingVertical: 0,
+          }}
+        />
+        {trailing}
+      </View>
+      {hint ? (
+        <TSCaptionText
+          textStyles={{
+            marginTop: 4,
+            fontSize: 11,
+            color: error ? theme.palette.AWE_Red : theme.palette.AWE_Green,
+          }}
+        >
+          {hint}
+        </TSCaptionText>
+      ) : null}
+    </View>
+  );
+};
+
+// ─── Sign In form ─────────────────────────────────────────────────────────────
 
 interface SignInProps {
   email: string;
@@ -40,152 +127,102 @@ const SignInComp: FunctionComponent<SignInProps> = ({
   const theme = useTheme();
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: theme.palette.backgroundColor,
-      }}
-    >
-      <View
-        style={{
-          justifyContent: "center",
-          padding: 24,
-          width: SCREEN_WIDTH * 0.85,
-        }}
-      >
-        {/* Card Container */}
+    <View>
+      <Field
+        testID={TestIDs.SignInEmailField.name()}
+        icon="mail-outline"
+        placeholder="Email address"
+        value={email}
+        onChangeText={onEmailChange}
+        keyboardType="email-address"
+        error={!!emailHelperText}
+        hint={emailHelperText || undefined}
+      />
+
+      <Field
+        testID={TestIDs.SignInPasswordField.name()}
+        icon="lock-closed-outline"
+        placeholder="Password"
+        value={password}
+        onChangeText={onPasswordChange}
+        secure={hidePassword}
+        trailing={
+          <Pressable onPress={() => setHidePassword(!hidePassword)} hitSlop={8}>
+            <Icon
+              name={hidePassword ? "eye-off-outline" : "eye-outline"}
+              size={18}
+              color={lightenHexColor(theme.palette.text, 0.4)}
+            />
+          </Pressable>
+        }
+      />
+
+      {showSignInFailedText && (
         <View
           style={{
-            backgroundColor: theme.palette.AWE_Green,
-            borderRadius: 16,
-            padding: 24,
-            // Android shadow:
-            elevation: 6,
-            // iOS shadow:
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.1,
-            shadowRadius: 6,
-          }}
-        >
-          {/* Title */}
-          <TSParagrapghText
-            textStyles={{
-              textAlign: "center",
-              fontSize: 26,
-              fontWeight: "600",
-              marginBottom: 18,
-              color: theme.palette.text,
-            }}
-          >
-            Sign In
-          </TSParagrapghText>
-
-          {/* Email */}
-
-          {/* Password */}
-          <View style={{ height: 28, marginVertical: 6 }}>
-            <Input
-              testID={TestIDs.SignInEmailField.name()}
-              placeholder="Email"
-              keyboardType="email-address"
-              autoCapitalize={AutoCaptilizeEnum.None}
-              value={email}
-              isError={!!emailHelperText}
-              helperText={emailHelperText}
-              onChangeText={onEmailChange}
-              leading={
-                <Icon
-                  name="mail-outline"
-                  size={10}
-                  color={theme.palette.text}
-                />
-              }
-              containerStyle={{
-                backgroundColor: theme.palette.backgroundColor,
-                borderRadius: 8,
-
-                height: 20,
-              }}
-              label="Email"
-            />
-          </View>
-          <View style={{ height: 28, marginVertical: 6 }}>
-            <Input
-              testID={TestIDs.SignInPasswordField.name()}
-              placeholder="Password"
-              secureTextEntry={hidePassword}
-              value={password}
-              onChangeText={onPasswordChange}
-              leading={
-                <Icon
-                  name={hidePassword ? "eye-off-outline" : "eye-outline"}
-                  size={10}
-                  color={theme.palette.text}
-                  onPress={() => setHidePassword(!hidePassword)}
-                />
-              }
-              containerStyle={{
-                backgroundColor: theme.palette.backgroundColor,
-                borderRadius: 8,
-              }}
-              label="Password"
-            />
-          </View>
-
-          {/* Sign In Button */}
-          <RegularButton
-            testID={TestIDs.SignInSubmit.name()}
-            onPress={login}
-            btnStyles={{
-              backgroundColor: theme.palette.primary.main,
-              paddingVertical: 14,
-              borderRadius: 8,
-            }}
-            text="Sign In"
-          />
-
-          {/* Error Message */}
-          {showSignInFailedText && (
-            <View style={{ marginTop: 16 }}>
-              <TSCaptionText
-                textStyles={{
-                  textAlign: "center",
-                  color: theme.palette.AWE_Red,
-                }}
-              >
-                No active account found with those credentials.
-              </TSCaptionText>
-            </View>
-          )}
-        </View>
-
-        {/* Footer Links */}
-        <View
-          style={{
+            backgroundColor: `${theme.palette.AWE_Red}15`,
+            borderRadius: 10,
+            padding: 10,
+            marginBottom: 14,
             flexDirection: "row",
-            justifyContent: "space-around",
-            marginTop: 24,
-            paddingHorizontal: 8,
+            alignItems: "center",
           }}
         >
-          <Pressable onPress={() => setAuthMode(1)}>
-            <TSSnippetText textStyles={{ color: theme.palette.AWE_Green }}>
-              Register
-            </TSSnippetText>
-          </Pressable>
-          {/* // 0 - Sign in
-            // 1 - Sign up
-            // 2 - Forgot Password
-            // 3 - Reset Password code page thing */}
-          <Pressable onPress={() => setAuthMode(2)}>
-            <TSSnippetText textStyles={{ color: theme.palette.AWE_Green }}>
-              Forgot Password?
-            </TSSnippetText>
-          </Pressable>
+          <Icon
+            name="alert-circle-outline"
+            size={15}
+            color={theme.palette.AWE_Red}
+            style={{ marginRight: 6 }}
+          />
+          <TSCaptionText
+            textStyles={{ color: theme.palette.AWE_Red, flex: 1, fontSize: 12 }}
+          >
+            No account found with those credentials.
+          </TSCaptionText>
         </View>
-      </View>
-    </SafeAreaView>
+      )}
+
+      {/* Primary button */}
+      <Pressable
+        testID={TestIDs.SignInSubmit.name()}
+        onPress={login}
+        style={({ pressed }) => ({
+          backgroundColor: theme.palette.AWE_Green,
+          borderRadius: 12,
+          paddingVertical: 14,
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "row",
+          marginTop: 4,
+          opacity: pressed ? 0.75 : 1,
+        })}
+      >
+        <Icon
+          name="log-in-outline"
+          size={17}
+          color="white"
+          style={{ marginRight: 7 }}
+        />
+        <TSCaptionText textStyles={{ color: "white", fontWeight: "700", fontSize: 14 }}>
+          Sign In
+        </TSCaptionText>
+      </Pressable>
+
+      {/* Footer link */}
+      <Pressable
+        onPress={() => setAuthMode(2)}
+        style={{ alignItems: "center", marginTop: 18 }}
+      >
+        <TSSnippetText
+          textStyles={{
+            color: lightenHexColor(theme.palette.text, 0.4),
+            fontSize: 13,
+          }}
+        >
+          Forgot your password?
+        </TSSnippetText>
+      </Pressable>
+    </View>
   );
 };
 

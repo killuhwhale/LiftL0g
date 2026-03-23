@@ -1,14 +1,11 @@
-import React, { FunctionComponent, useState, useRef, useEffect } from "react";
-import { View } from "react-native";
+import React, { FunctionComponent, useState, useEffect } from "react";
+import { View, TouchableOpacity } from "react-native";
 import { useTheme } from "styled-components/native";
 
-import { TSCaptionText, TSInputTextSm } from "@/src/app_components/Text/Text";
+import { TSCaptionText, TSInputTextSm, XSmallText } from "@/src/app_components/Text/Text";
 import {
-  Container,
-  SCREEN_WIDTH,
   DURATION_UNITS,
   DISTANCE_UNITS,
-  SCREEN_HEIGHT,
   WEIGHT_UNITS,
   WORKOUT_TYPES,
   STANDARD_W,
@@ -18,11 +15,8 @@ import {
   nanOrNah,
   numFilter,
   numFilterWithSpaces,
-  AddItemFontsize,
-  lightenHexColor,
   tsInputSm,
 } from "@/src/app_components/shared";
-import { useGetWorkoutNamesQuery } from "@/src/redux/api/apiSlice";
 
 import {
   WorkoutDualItemProps,
@@ -32,13 +26,11 @@ import {
 
 import Input from "@/src/app_components/Input/input";
 import VerticalPicker from "@/src/app_components/Pickers/VerticalPicker";
-import { RegularButton } from "@/src/app_components/Buttons/buttons";
 import { TestIDs } from "@/src/utils/constants";
 import FilterItemsModal from "@/src/app_components/modals/filterItemsModal";
-import PickerFilterListView from "@/src/app_components/modals/pickerFilterListView";
 import { numberInputStyle } from "@/src/utils/algos";
 import AlertModal from "@/src/app_components/modals/AlertModal";
-import LinearGradient from "react-native-linear-gradient";
+import Icon from "react-native-vector-icons/Ionicons";
 
 interface AddWorkoutItemProps {
   success: boolean;
@@ -46,13 +38,163 @@ interface AddWorkoutItemProps {
   errorMsg: string;
 }
 
-const isArrayStringEmpty = (s: string) => {
-  return stripArrStr(s) === "0";
+const isArrayStringEmpty = (s: string) => stripArrStr(s) === "0";
+const stripArrStr = (s: string) =>
+  s.substring(1, s.length - 1).replaceAll(",", " ");
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const FieldLabel: FunctionComponent<{ children: string }> = ({ children }) => (
+  <TSCaptionText
+    textStyles={{ fontSize: 10, opacity: 0.65, marginBottom: 3, marginLeft: 2 }}
+  >
+    {children}
+  </TSCaptionText>
+);
+
+const NumericField: FunctionComponent<{
+  label: string;
+  value: string;
+  placeholder: string;
+  testID?: string;
+  isError?: boolean;
+  helperText?: string;
+  onChange(t: string): void;
+}> = ({ label, value, placeholder, testID, isError, helperText, onChange }) => {
+  const theme = useTheme();
+  return (
+    <View style={{ flex: 1 }}>
+      <FieldLabel>{label}</FieldLabel>
+      <Input
+        keyboardType="decimal-pad"
+        containerStyle={[
+          numberInputStyle.containerStyle,
+          {
+            backgroundColor: theme.palette.IP_TextInput_bg,
+            borderRadius: 10,
+            height: 44,
+          },
+        ]}
+        label=""
+        placeholder={placeholder}
+        testID={testID}
+        centerInput
+        fontSize={tsInputSm}
+        value={value}
+        inputStyles={{ textAlign: "center" }}
+        isError={isError}
+        helperText={helperText}
+        onChangeText={onChange}
+      />
+    </View>
+  );
 };
 
-const stripArrStr = (s: string) => {
-  return s.substring(1, s.length - 1).replaceAll(",", " ");
+// Horizontal swipe unit picker with ‹ › visual affordance
+const SwipeUnit: FunctionComponent<{
+  label: string;
+  data: string[];
+  displayIndex: number;
+  onChange(idx: number): void;
+  testID?: string;
+  flex?: number;
+}> = ({ label, data, displayIndex, onChange, testID, flex = 1 }) => {
+  const theme = useTheme();
+  return (
+    <View style={{ flex }}>
+      <FieldLabel>{label}</FieldLabel>
+      <View style={{ height: 44, position: "relative" }}>
+        <VerticalPicker
+          key={testID}
+          itemDisplayIndex={displayIndex}
+          data={data}
+          testID={testID}
+          onChange={onChange}
+        />
+        {/* Swipe affordance arrows — non-interactive overlay */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 4,
+            top: 0,
+            bottom: 0,
+            justifyContent: "center",
+          }}
+        >
+          <Icon
+            name="chevron-back-outline"
+            size={11}
+            color={`${theme.palette.lightGray}66`}
+          />
+        </View>
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            right: 4,
+            top: 0,
+            bottom: 0,
+            justifyContent: "center",
+          }}
+        >
+          <Icon
+            name="chevron-forward-outline"
+            size={11}
+            color={`${theme.palette.lightGray}66`}
+          />
+        </View>
+      </View>
+    </View>
+  );
 };
+
+// Segmented control for Reps / Duration / Distance
+const SegControl: FunctionComponent<{
+  options: string[];
+  selectedIdx: number;
+  onSelect(i: number): void;
+  accentColor: string;
+}> = ({ options, selectedIdx, onSelect, accentColor }) => {
+  const theme = useTheme();
+  return (
+    <View style={{ flexDirection: "row", gap: 6, marginBottom: 14 }}>
+      {options.map((opt, i) => {
+        const active = selectedIdx === i;
+        return (
+          <TouchableOpacity
+            key={opt}
+            onPress={() => onSelect(i)}
+            activeOpacity={0.75}
+            style={{
+              flex: 1,
+              paddingVertical: 8,
+              borderRadius: 10,
+              backgroundColor: active ? accentColor : theme.palette.backgroundColor,
+              borderWidth: 1.5,
+              borderColor: active ? accentColor : `${theme.palette.lightGray}28`,
+              alignItems: "center",
+            }}
+          >
+            <TSInputTextSm
+              textStyles={{
+                color: active
+                  ? theme.palette.backgroundColor
+                  : theme.palette.gray,
+                fontWeight: active ? "700" : "400",
+                fontSize: 12,
+              }}
+            >
+              {opt}
+            </TSInputTextSm>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 const AddItem: FunctionComponent<{
   addWorkoutItem(
@@ -65,9 +207,7 @@ const AddItem: FunctionComponent<{
   toggleUpdateHack: boolean;
   requestUpdate: (item: WorkoutItemProps | WorkoutDualItemProps | null) => void;
 }> = (props) => {
-  // Need to have blank values, empty strings in the field instead of a default 0
-
-  const initWorkoutName = 0; // index for Workout name from data query
+  const initWorkoutName = 0;
   const initWeight = "";
   const initWeightUnit = "kg";
   const initPercentOfWeightUnit = "";
@@ -76,24 +216,17 @@ const AddItem: FunctionComponent<{
   const initPauseDuration = "";
   const initDistance = "";
   const initDistanceUnit = 0;
-
   const initDuration = "";
   const initDurationUnit = 0;
-
   const initRestDuration = "";
   const initRestDurationUnit = 0;
 
-  // TODO() Need to update vertical item picker to change its position with a useEffect.... weight_unit
-  // TODO() Need to update horizontal item picker to change its position with a useEffect.... quanitity Type, distance_unit, duration_unit, rest_unit
-  //  Need to change the Slider to display the correct unit type and also the underlying data variable that stores the value (already set with useEffect)...
   useEffect(() => {
     if (!props.itemToUpdate || !workoutNamesMap) return resetDefaultItem();
 
     const updateRowOne = async () => {
-      console.log("AddItem useEffect: ", props.itemToUpdate);
       if (!props.itemToUpdate) return resetDefaultItem();
-
-      setWorkoutName(workoutNamesMap.get(props.itemToUpdate.name.name) ?? 0); // get index from list props.itemToUpdate
+      setWorkoutName(workoutNamesMap.get(props.itemToUpdate.name.name) ?? 0);
 
       if (!isArrayStringEmpty(props.itemToUpdate.reps)) {
         setShowQuantity(() => 0);
@@ -107,11 +240,6 @@ const AddItem: FunctionComponent<{
 
     const updateRowTwo = async () => {
       if (!props.itemToUpdate) return resetDefaultItem();
-      console.log(
-        "Update distance unit to : ",
-        props.itemToUpdate?.distance_unit
-      );
-      // Row 2
       setSets(props.itemToUpdate.sets.toString());
       setReps(stripArrStr(props.itemToUpdate.reps));
       setDistance(stripArrStr(props.itemToUpdate.distance));
@@ -124,15 +252,8 @@ const AddItem: FunctionComponent<{
 
     const updateRowThree = async () => {
       if (!props.itemToUpdate) return resetDefaultItem();
-
-      // Row 3
       setRestDuration(props.itemToUpdate.rest_duration.toString());
-      console.log(
-        "Setting restDuration unit: ",
-        props.itemToUpdate.rest_duration_unit
-      );
       setRestDurationUnit(props.itemToUpdate?.rest_duration_unit ?? 0);
-
       setPercentOfWeightUnit(props.itemToUpdate.percent_of);
       setCurrentItemUUID(props.itemToUpdate.uuid ?? "");
     };
@@ -155,7 +276,6 @@ const AddItem: FunctionComponent<{
   }, [props.itemToUpdate, props.toggleUpdateHack]);
 
   const theme = useTheme();
-
   const workoutNames = props.workoutNames as WorkoutNameProps[];
 
   const workoutNamesMap: Map<string, number> = workoutNames
@@ -164,23 +284,20 @@ const AddItem: FunctionComponent<{
       )
     : new Map<string, number>();
 
-  const pickerRef = useRef<any>();
-  const [itemPenalty, setItemPenalty] = useState(""); // preserve item penalty when updating item
-
+  const [itemPenalty, setItemPenalty] = useState("");
   const [currentItemUUID, setCurrentItemUUID] = useState("");
   const [workoutName, setWorkoutName] = useState(initWorkoutName);
 
-  const [weight, setWeight] = useState(initWeight); // Json string list of numbers.
-  const [weightUnit, setWeightUnit] = useState(initWeightUnit); // Json string list of numbers.
+  const [weight, setWeight] = useState(initWeight);
+  const [weightUnit, setWeightUnit] = useState(initWeightUnit);
   const [weightError, setWeightError] = useState("");
   const [showWeightAlertModal, setShowWeightAlertModal] = useState(false);
 
   const [percentOfWeightUnit, setPercentOfWeightUnit] = useState(
     initPercentOfWeightUnit
-  ); // Json string list of numbers.
+  );
 
-  const [sets, setSets] = useState(initSets); // Need this for Standard workouts.
-  // With schemeType Rounds, allow user to enter space delimited list of numbers that must match number of rounds...
+  const [sets, setSets] = useState(initSets);
   const [reps, setReps] = useState(initReps);
   const [distance, setDistance] = useState(initDistance);
   const [pauseDuration, setPauseDuration] = useState(initPauseDuration);
@@ -189,10 +306,8 @@ const AddItem: FunctionComponent<{
   const [duration, setDuration] = useState(initDuration);
   const [durationUnit, setDurationUnit] = useState(initDurationUnit);
 
-  // Rest should be an item. I can implement something to ensure rest is entered when the WorkoutItem is Rest...
   const [restDuration, setRestDuration] = useState(initRestDuration);
-  const [restDurationUnit, setRestDurationUnit] =
-    useState(initRestDurationUnit);
+  const [restDurationUnit, setRestDurationUnit] = useState(initRestDurationUnit);
   const [showQuantity, setShowQuantity] = useState(0);
   const QuantityLabels = ["Reps", "Duration", "Distance"];
 
@@ -200,12 +315,6 @@ const AddItem: FunctionComponent<{
   const [repSchemeRoundsErrorText, setRepsSchemeRoundsErrorText] = useState("");
 
   const [showWorkoutNamesModal, setShowWorkoutNamesModal] = useState(false);
-
-  // This NumberInput should vary depedning on the Scheme Type
-  // For standard, this will be a single number,
-  // For the other types, it should be a single number or match the length of scheme_rounds list
-  // Example SchemeType Reps: 21,15,9
-  // item Squat weights 200lbs, 100lbs, 50lbs,  ==> this means we do 200 lbs on the first round, 100 on the seocnd, etc...
 
   const onNameSelect = (_workoutName: WorkoutNameProps) => {
     const name = workoutNamesMap.get(_workoutName.name);
@@ -216,8 +325,6 @@ const AddItem: FunctionComponent<{
   };
 
   const resetDefaultItem = () => {
-    console.log("Resetting item");
-
     setWeight(initWeight);
     setDistance(initDistance);
     setPercentOfWeightUnit(initPercentOfWeightUnit);
@@ -227,50 +334,26 @@ const AddItem: FunctionComponent<{
     setDuration(initDuration);
     setRestDuration(initRestDuration);
     setItemPenalty("");
-    // setRestDurationUnit(initRestDurationUnit);
   };
 
   const _addItem = (updateItem: boolean = false) => {
-    if (!workoutNames || workoutNames.length <= 0) {
-      console.log("Error, no workout names to add to item.");
-      return;
-    }
+    if (!workoutNames || workoutNames.length <= 0) return;
 
     let setsItem = nanOrNah(sets);
     let repsItem = reps;
     let durationItem = duration;
     let distanceItem = distance;
 
-    // sets: nanOrNah(sets),
-    // reps: reps.length == 0 ? '0' : reps,
-    // duration: distance.length == 0 ? '0' : distance,
-    // distance: distance.length == 0 ? '0' : distance,
-
-    // Enforce default values per workout type.
-    if (setsItem === 0) {
-      setsItem = 1; // ensure there is at least 1 set.
-    }
-    if (repsItem.length === 0 || parseInt(repsItem) === 0) {
-      repsItem = "0";
-    }
-    if (durationItem.length === 0 || parseInt(durationItem) === 0) {
-      durationItem = "0";
-    }
-    if (distanceItem.length === 0 || parseInt(distanceItem) === 0) {
-      distanceItem = "0";
-    }
+    if (setsItem === 0) setsItem = 1;
+    if (repsItem.length === 0 || parseInt(repsItem) === 0) repsItem = "0";
+    if (durationItem.length === 0 || parseInt(durationItem) === 0) durationItem = "0";
+    if (distanceItem.length === 0 || parseInt(distanceItem) === 0) distanceItem = "0";
 
     if (QuantityLabels[showQuantity] == "Reps" && parseInt(repsItem) === 0) {
       repsItem = "1";
-    } else if (
-      QuantityLabels[showQuantity] == "Duration" &&
-      parseInt(durationItem) === 0
-    ) {
+    } else if (QuantityLabels[showQuantity] == "Duration" && parseInt(durationItem) === 0) {
       durationItem = "1";
-    } else if (
-      QuantityLabels[showQuantity] == "Distance" &&
-      parseInt(distanceItem) === 0
-    ) {
+    } else if (QuantityLabels[showQuantity] == "Distance" && parseInt(distanceItem) === 0) {
       distanceItem = "1";
     }
 
@@ -297,26 +380,17 @@ const AddItem: FunctionComponent<{
       uuid: currentItemUUID,
       penalty: itemPenalty,
     };
-    console.log("Adding item: ", item);
 
-    // // Checks if reps and weights match the repScheme
-    const { success, errorType, errorMsg } = props.addWorkoutItem(
-      item,
-      updateItem
-    );
+    const { success, errorType, errorMsg } = props.addWorkoutItem(item, updateItem);
 
     if (success) {
       resetDefaultItem();
     } else if (errorType == 0) {
-      // Missing Reps in Scheme, parent should highlight SchemeRounds Input
       console.log("Add item error: ", errorMsg);
     } else if (errorType == 1) {
-      // Item reps do not match Reps in Scheme
-      console.log("Add item error: ", errorMsg);
       setRepsSchemeRoundsError(true);
       setRepsSchemeRoundsErrorText(errorMsg);
     } else if (errorType == 3) {
-      // Invalid Weights
       setWeightError(errorMsg);
       setShowWeightAlertModal(true);
     }
@@ -327,618 +401,397 @@ const AddItem: FunctionComponent<{
       ? workoutNames[workoutName].name.match(/pause*/i)
       : false;
 
+  const isEditing = !!props.itemToUpdate;
+  const accentColor = isEditing ? theme.palette.AWE_Yellow : theme.palette.AWE_Green;
+  const isStandard = WORKOUT_TYPES[props.schemeType] == STANDARD_W;
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
+
   return (
-    <View style={{ height: SCREEN_HEIGHT * 0.2412 }}>
-      <View
-        style={{
-          flex: 1,
-          borderColor: "white",
-          borderWidth: 1.5,
-          padding: 2,
-        }}
-      >
-        {/* Row 1 */}
-        <View style={{ flex: 1, flexDirection: "row" }}>
-          {workoutNames ? (
-            <View
-              style={{ justifyContent: "flex-start", flex: 4, height: "100%" }}
-            >
-              <View
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                }}
-              >
-                <View style={{ flex: 4 }}>
-                  <TSCaptionText
-                    textStyles={{
-                      textAlign: "center",
-                      backgroundColor: theme.palette.IP_Label_bg,
-                    }}
-                  >
-                    Workout Items
-                  </TSCaptionText>
-                  <View
-                    style={{ flex: 1, width: "100%", justifyContent: "center" }}
-                  >
-                    {!showWorkoutNamesModal ? (
-                      <RegularButton
-                        text={
-                          workoutNames[workoutName]?.name ??
-                          "No workout name found"
-                        }
-                        btnStyles={{
-                          backgroundColor: theme.palette.IP_Clickable_bg,
-                        }}
-                        testID={TestIDs.AddItemChooseWorkoutNameField.name()}
-                        onPress={() => setShowWorkoutNamesModal(true)}
-                      />
-                    ) : (
-                      <FilterItemsModal
-                        key={"FilterWorkoutNames"}
-                        modalVisible={showWorkoutNamesModal}
-                        onRequestClose={() => {
-                          setShowWorkoutNamesModal(!showWorkoutNamesModal);
-                        }}
-                        items={workoutNames}
-                        searchTextPlaceHolder="Search"
-                        extraProps={{
-                          onSelect: onNameSelect,
-                        }}
-                        uiView={PickerFilterListView}
-                      />
-                    )}
-                  </View>
-                </View>
-
-                {isPausedItem ? (
-                  <View style={{ flex: 1 }}>
-                    <TSCaptionText
-                      textStyles={{
-                        textAlign: "center",
-                        backgroundColor: theme.palette.IP_Label_bg,
-                      }}
-                    >
-                      Paused
-                    </TSCaptionText>
-                    <View
-                      style={{
-                        flex: 1,
-                        backgroundColor: theme.palette.backgroundColor,
-                      }}
-                    >
-                      <Input
-                        containerStyle={[
-                          numberInputStyle.containerStyle,
-                          {
-                            alignItems: "center",
-                            borderRightWidth: 1,
-                            borderColor: theme.palette.text,
-                          },
-                        ]}
-                        testID={TestIDs.AddItemPauseDurField.name()}
-                        label=""
-                        placeholder="time"
-                        centerInput
-                        keyboardType="decimal-pad"
-                        fontSize={tsInputSm}
-                        value={pauseDuration}
-                        inputStyles={{ textAlign: "center" }}
-                        isError={repsSchemeRoundsError}
-                        helperText={repSchemeRoundsErrorText}
-                        onChangeText={(text: string) => {
-                          setPauseDuration(numFilter(text));
-                        }}
-                      />
-                    </View>
-                  </View>
-                ) : (
-                  <></>
-                )}
-              </View>
-            </View>
-          ) : (
-            <></>
-          )}
-
-          <View style={{ flex: 2 }}>
-            <TSCaptionText
-              textStyles={{
-                textAlign: "center",
-                backgroundColor: theme.palette.IP_Label_bg,
-              }}
-            >
-              Quantity type
-            </TSCaptionText>
-            <View
-              style={{
-                flex: 1,
-                width: "100%",
-              }}
-            >
-              {/* // TODO  Update Vertical Picker to update itself programmatically  */}
-
-              <VerticalPicker
-                key={"qty"}
-                itemDisplayIndex={showQuantity}
-                data={QuantityLabels}
-                testID={TestIDs.VerticalPickerGestureHandlerQtyType.name()}
-                onChange={(itemIndex) => {
-                  const itemValue = QuantityLabels[itemIndex];
-                  // setDistance(initDistance);
-                  // setDuration(initDuration);
-                  // setReps(initReps);
-                  // updateItem('distance', nanOrNah(initDistance))
-                  // updateItem('duration', nanOrNah(initDuration))
-                  // updateItem('reps', nanOrNah(initReps))
-                  setShowQuantity(itemIndex);
-                }}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Row 2 */}
-        <View style={{ flexDirection: "row", flex: 1 }}>
-          {props.schemeType == 0 ? (
-            <View style={{ flex: 1 }}>
-              <TSCaptionText
-                textStyles={{
-                  textAlign: "center",
-                  backgroundColor: theme.palette.IP_Label_bg,
-                }}
-              >
-                Sets
-              </TSCaptionText>
-              <Input
-                keyboardType="decimal-pad"
-                containerStyle={[
-                  numberInputStyle.containerStyle,
-                  {
-                    backgroundColor: theme.palette.IP_TextInput_bg,
-                    borderRightWidth: 1,
-                    borderColor: theme.palette.text,
-                  },
-                ]}
-                label=""
-                testID={TestIDs.AddItemSetsField.name()}
-                placeholder="Sets"
-                centerInput={true}
-                fontSize={tsInputSm}
-                value={sets}
-                inputStyles={{ textAlign: "center" }}
-                onChangeText={(text: string) => {
-                  setSets(numFilter(text));
-                }}
-              />
-            </View>
-          ) : (
-            <></>
-          )}
-
-          <View style={{ alignContent: "center", flex: 3 }}>
-            {showQuantity == 0 ? (
-              <View style={{ flex: 1 }}>
-                <TSCaptionText
-                  textStyles={{
-                    textAlign: "center",
-                    backgroundColor: theme.palette.IP_Label_bg,
-                  }}
-                >
-                  Reps
-                </TSCaptionText>
-                <Input
-                  keyboardType="decimal-pad"
-                  containerStyle={[
-                    numberInputStyle.containerStyle,
-                    {
-                      backgroundColor: theme.palette.IP_TextInput_bg,
-                      alignItems: "center",
-                      borderRightWidth: 1,
-                      borderColor: theme.palette.text,
-                    },
-                  ]}
-                  label=""
-                  testID={TestIDs.AddItemRepsField?.name()}
-                  placeholder="Reps"
-                  centerInput
-                  fontSize={tsInputSm}
-                  value={reps}
-                  inputStyles={{ textAlign: "center" }}
-                  isError={repsSchemeRoundsError}
-                  helperText={repSchemeRoundsErrorText}
-                  onChangeText={(text: string) => {
-                    if (repsSchemeRoundsError) {
-                      setRepsSchemeRoundsError(false);
-                      setRepsSchemeRoundsErrorText("");
-                    }
-
-                    // When we update this field, reps,
-                    // We should also reset duration and distance...
-                    if (
-                      WORKOUT_TYPES[props.schemeType] == STANDARD_W ||
-                      WORKOUT_TYPES[props.schemeType] == REPS_W ||
-                      WORKOUT_TYPES[props.schemeType] == CREATIVE_W
-                    ) {
-                      setReps(numFilter(text));
-                      setDistance(numFilter("0"));
-                      setDuration(numFilter("0"));
-                    } else {
-                      setReps(numFilterWithSpaces(text));
-                      setDistance(numFilterWithSpaces("0"));
-                      setDuration(numFilterWithSpaces("0"));
-                    }
-                  }}
-                />
-              </View>
-            ) : showQuantity == 1 ? (
-              <View style={{ flex: 1 }}>
-                <TSCaptionText
-                  textStyles={{
-                    textAlign: "center",
-                    backgroundColor: theme.palette.IP_Label_bg,
-                  }}
-                >
-                  Duration
-                </TSCaptionText>
-                <View style={{ flexDirection: "row", width: "100%", flex: 1 }}>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      keyboardType="decimal-pad"
-                      containerStyle={[
-                        numberInputStyle.containerStyle,
-                        {
-                          backgroundColor: theme.palette.IP_TextInput_bg,
-                        },
-                      ]}
-                      label=""
-                      placeholder="Duration"
-                      testID={TestIDs.AddItemDurationField.name()}
-                      centerInput={true}
-                      fontSize={tsInputSm}
-                      value={duration}
-                      inputStyles={{ textAlign: "center" }}
-                      onChangeText={(t) => {
-                        if (
-                          WORKOUT_TYPES[props.schemeType] == STANDARD_W ||
-                          WORKOUT_TYPES[props.schemeType] == REPS_W ||
-                          WORKOUT_TYPES[props.schemeType] == CREATIVE_W
-                        ) {
-                          setDuration(numFilter(t));
-                          setReps(numFilter("0"));
-                          setDistance(numFilter("0"));
-                        } else {
-                          setDuration(numFilterWithSpaces(t));
-                          setReps(numFilterWithSpaces("0"));
-                          setDistance(numFilterWithSpaces("0"));
-                        }
-                      }}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View
-                      style={{
-                        flex: 1,
-                        width: "100%",
-                      }}
-                    >
-                      <VerticalPicker
-                        itemDisplayIndex={durationUnit}
-                        key={"dur"}
-                        data={DURATION_UNITS}
-                        testID={TestIDs.VerticalPickerGestureHandlerDuration.name()}
-                        onChange={(itemIndex) => {
-                          const itemValue = DURATION_UNITS[itemIndex];
-                          setDurationUnit(itemIndex);
-                        }}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ) : (
-              <View style={{ flex: 1 }}>
-                <TSCaptionText
-                  textStyles={{
-                    textAlign: "center",
-                    backgroundColor: theme.palette.IP_Label_bg,
-                  }}
-                >
-                  Distance
-                </TSCaptionText>
-                <View style={{ flexDirection: "row", width: "100%", flex: 1 }}>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      keyboardType="decimal-pad"
-                      containerStyle={[
-                        numberInputStyle.containerStyle,
-                        {
-                          backgroundColor: theme.palette.IP_TextInput_bg,
-                        },
-                      ]}
-                      label=""
-                      placeholder="Distance"
-                      testID={TestIDs.AddItemDistanceField.name()}
-                      centerInput={true}
-                      fontSize={tsInputSm}
-                      value={distance}
-                      inputStyles={{ textAlign: "center" }}
-                      onChangeText={(t: string) => {
-                        if (
-                          WORKOUT_TYPES[props.schemeType] == STANDARD_W ||
-                          WORKOUT_TYPES[props.schemeType] == REPS_W ||
-                          WORKOUT_TYPES[props.schemeType] == CREATIVE_W
-                        ) {
-                          setDistance(numFilter(t));
-                          setReps(numFilter("0"));
-                          setDuration(numFilter("0"));
-                        } else {
-                          setDistance(numFilterWithSpaces(t));
-                          setReps(numFilterWithSpaces("0"));
-                          setDuration(numFilterWithSpaces("0"));
-                        }
-                      }}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View
-                      style={{
-                        flex: 1,
-                        width: "100%",
-                      }}
-                    >
-                      <VerticalPicker
-                        key={"dist"}
-                        itemDisplayIndex={distanceUnit}
-                        data={DISTANCE_UNITS}
-                        testID={TestIDs.VerticalPickerGestureHandlerDistance.name()}
-                        onChange={(itemIndex) => {
-                          const itemValue = DISTANCE_UNITS[itemIndex];
-                          setPercentOfWeightUnit(initPercentOfWeightUnit);
-                          setDistanceUnit(itemIndex);
-                        }}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
-
-          <View
-            style={{
-              flex: 3,
-            }}
-          >
-            <TSCaptionText
-              textStyles={{
-                textAlign: "center",
-                backgroundColor: theme.palette.IP_Label_bg,
-              }}
-            >
-              Weights {weightUnit}
-            </TSCaptionText>
-
-            <View
-              style={{
-                flexDirection: "row",
-                flex: 1,
-              }}
-            >
-              <View style={{ flex: 3 }}>
-                <Input
-                  keyboardType="decimal-pad"
-                  containerStyle={[
-                    numberInputStyle.containerStyle,
-                    {
-                      backgroundColor: theme.palette.IP_TextInput_bg,
-                    },
-                  ]}
-                  label=""
-                  placeholder="Weight(s)"
-                  testID={TestIDs.AddItemWeightField.name()}
-                  centerInput={true}
-                  fontSize={tsInputSm}
-                  value={weight}
-                  // isError={weightError.length > 0}
-                  helperText={weightError}
-                  inputStyles={{ textAlign: "center" }}
-                  onChangeText={(t) => {
-                    if (
-                      WORKOUT_TYPES[props.schemeType] == STANDARD_W ||
-                      WORKOUT_TYPES[props.schemeType] == REPS_W ||
-                      WORKOUT_TYPES[props.schemeType] == ROUNDS_W
-                    ) {
-                      if (weightError.length > 0) {
-                        setWeightError("");
-                      }
-                      setWeight(numFilterWithSpaces(t));
-                    } else {
-                      setWeight(numFilter(t));
-                    }
-                  }}
-                />
-              </View>
-
-              <View
-                style={{
-                  flex: 1,
-                }}
-              >
-                <VerticalPicker
-                  key={"wts"}
-                  itemDisplayIndex={WEIGHT_UNITS.indexOf(weightUnit)}
-                  data={WEIGHT_UNITS}
-                  testID={TestIDs.VerticalPickerGestureHandlerWtUnit.name()}
-                  onChange={(itemIndex) => {
-                    const itemValue = WEIGHT_UNITS[itemIndex];
-                    setPercentOfWeightUnit(initPercentOfWeightUnit);
-                    setWeightUnit(itemValue);
-                  }}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Row 3 */}
+    <View
+      style={{
+        backgroundColor: theme.palette.darkGray,
+        borderRadius: 16,
+        padding: 14,
+        marginVertical: 8,
+        borderWidth: 1,
+        borderColor: isEditing
+          ? `${theme.palette.AWE_Yellow}44`
+          : `${theme.palette.lightGray}18`,
+      }}
+    >
+      {/* ── Edit mode banner ──────────────────────────────────────────────── */}
+      {isEditing && (
         <View
           style={{
             flexDirection: "row",
-            justifyContent: "flex-end",
-            flex: 1,
+            alignItems: "center",
+            backgroundColor: `${theme.palette.AWE_Yellow}18`,
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            marginBottom: 12,
           }}
         >
-          {weightUnit === "%" ? (
-            <View style={{ flex: 1 }}>
-              <TSCaptionText
-                textStyles={{
-                  textAlign: "center",
-                  backgroundColor: theme.palette.IP_Label_bg,
-                }}
-              >
-                % of
-              </TSCaptionText>
-              <Input
-                containerStyle={[
-                  numberInputStyle.containerStyle,
-                  {
-                    backgroundColor: theme.palette.IP_TextInput_bg,
-                    borderRightWidth: 1,
-                    borderColor: theme.palette.text,
-                  },
-                ]}
-                label=""
-                placeholder="% of"
-                testID={TestIDs.AddItemPercentOfField.name()}
-                centerInput={true}
-                fontSize={tsInputSm}
-                value={percentOfWeightUnit}
-                inputStyles={{ textAlign: "center" }}
-                onChangeText={(t) => {
-                  setPercentOfWeightUnit(t);
-                }}
-              />
-            </View>
-          ) : (
-            <></>
-          )}
-          <View style={{ flex: 1 }}>
-            <TSCaptionText
-              textStyles={{
-                textAlign: "center",
-                backgroundColor: theme.palette.IP_Label_bg,
-              }}
-            >
-              Rest
-            </TSCaptionText>
-            <View style={{ flex: 1, flexDirection: "row" }}>
-              <View style={{ flex: 1 }}>
-                <Input
-                  keyboardType="decimal-pad"
-                  containerStyle={[
-                    numberInputStyle.containerStyle,
-                    {
-                      backgroundColor: theme.palette.IP_TextInput_bg,
-                    },
-                  ]}
-                  label=""
-                  placeholder="Rest"
-                  testID={TestIDs.AddItemRestField.name()}
-                  centerInput={true}
-                  fontSize={tsInputSm}
-                  value={restDuration}
-                  inputStyles={{ textAlign: "center" }}
-                  onChangeText={(t) => {
-                    setRestDuration(numFilter(t));
-                  }}
-                />
-              </View>
-              <View
-                style={{
-                  flex: weightUnit === "%" ? 2 : 1,
-                }}
-              >
-                <VerticalPicker
-                  key={"rest"}
-                  itemDisplayIndex={restDurationUnit}
-                  data={DURATION_UNITS}
-                  testID={TestIDs.VerticalPickerGestureHandlerRestUnit.name()}
-                  onChange={(itemIndex) => {
-                    const itemValue = DURATION_UNITS[itemIndex];
-                    setRestDurationUnit(itemIndex);
-                  }}
-                />
-              </View>
-            </View>
-          </View>
+          <Icon
+            name="create-outline"
+            size={14}
+            color={theme.palette.AWE_Yellow}
+            style={{ marginRight: 6 }}
+          />
+          <XSmallText
+            textStyles={{ color: theme.palette.AWE_Yellow, fontWeight: "700", fontSize: 11 }}
+          >
+            Editing: {props.itemToUpdate?.name?.name ?? "item"}
+          </XSmallText>
         </View>
+      )}
 
-        <View style={{ flex: 1, width: "100%", justifyContent: "center" }}>
-          {props.itemToUpdate ? (
-            <View
-              style={{
-                flexDirection: "row",
-                height: "100%",
+      {/* ── Exercise name selector ────────────────────────────────────────── */}
+      <FieldLabel>Exercise</FieldLabel>
+      {!showWorkoutNamesModal ? (
+        <TouchableOpacity
+          testID={TestIDs.AddItemChooseWorkoutNameField.name()}
+          onPress={() => setShowWorkoutNamesModal(true)}
+          activeOpacity={0.75}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: theme.palette.backgroundColor,
+            borderRadius: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            marginBottom: 14,
+            borderWidth: 1.5,
+            borderColor: `${accentColor}55`,
+          }}
+        >
+          <TSInputTextSm
+            textStyles={{ fontWeight: "700", fontSize: 14, flex: 1 }}
+            numberOfLines={1}
+          >
+            {workoutNames?.[workoutName]?.name ?? "Select exercise…"}
+          </TSInputTextSm>
+          <Icon
+            name="chevron-down"
+            size={16}
+            color={theme.palette.lightGray}
+          />
+        </TouchableOpacity>
+      ) : (
+        <FilterItemsModal
+          key={"FilterWorkoutNames"}
+          modalVisible={showWorkoutNamesModal}
+          onRequestClose={() => setShowWorkoutNamesModal(false)}
+          items={workoutNames}
+          searchTextPlaceHolder="Search exercises"
+          extraProps={{ onSelect: onNameSelect }}
+        />
+      )}
+
+      {/* ── Quantity type segmented control ───────────────────────────────── */}
+      <FieldLabel>Quantity type</FieldLabel>
+      <SegControl
+        options={QuantityLabels}
+        selectedIdx={showQuantity}
+        onSelect={(i) => setShowQuantity(i)}
+        accentColor={accentColor}
+      />
+
+      {/* ── Metrics row ───────────────────────────────────────────────────── */}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+        {/* Sets — only for STANDARD_W */}
+        {isStandard && (
+          <NumericField
+            label="Sets"
+            value={sets}
+            placeholder="3"
+            testID={TestIDs.AddItemSetsField.name()}
+            onChange={(t) => setSets(numFilter(t))}
+          />
+        )}
+
+        {/* Quantity value */}
+        {showQuantity === 0 && (
+          <NumericField
+            label="Reps"
+            value={reps}
+            placeholder="10"
+            testID={TestIDs.AddItemRepsField?.name()}
+            isError={repsSchemeRoundsError}
+            helperText={repSchemeRoundsErrorText}
+            onChange={(t) => {
+              if (repsSchemeRoundsError) {
+                setRepsSchemeRoundsError(false);
+                setRepsSchemeRoundsErrorText("");
+              }
+              if (
+                WORKOUT_TYPES[props.schemeType] == STANDARD_W ||
+                WORKOUT_TYPES[props.schemeType] == REPS_W ||
+                WORKOUT_TYPES[props.schemeType] == CREATIVE_W
+              ) {
+                setReps(numFilter(t));
+                setDistance(numFilter("0"));
+                setDuration(numFilter("0"));
+              } else {
+                setReps(numFilterWithSpaces(t));
+                setDistance(numFilterWithSpaces("0"));
+                setDuration(numFilterWithSpaces("0"));
+              }
+            }}
+          />
+        )}
+
+        {showQuantity === 1 && (
+          <>
+            <NumericField
+              label="Duration"
+              value={duration}
+              placeholder="60"
+              testID={TestIDs.AddItemDurationField.name()}
+              onChange={(t) => {
+                if (
+                  WORKOUT_TYPES[props.schemeType] == STANDARD_W ||
+                  WORKOUT_TYPES[props.schemeType] == REPS_W ||
+                  WORKOUT_TYPES[props.schemeType] == CREATIVE_W
+                ) {
+                  setDuration(numFilter(t));
+                  setReps(numFilter("0"));
+                  setDistance(numFilter("0"));
+                } else {
+                  setDuration(numFilterWithSpaces(t));
+                  setReps(numFilterWithSpaces("0"));
+                  setDistance(numFilterWithSpaces("0"));
+                }
               }}
-            >
-              <View style={{ flex: 1, justifyContent: "center" }}>
-                <RegularButton
-                  onPress={() => props.requestUpdate(null)}
-                  testID={TestIDs.CreateWorkoutAddItemBtn.name()}
-                  btnStyles={{
-                    backgroundColor: theme.palette.darkGray,
-                  }}
-                  text="Clear"
-                />
-              </View>
+            />
+            <SwipeUnit
+              label="Time unit"
+              data={DURATION_UNITS}
+              displayIndex={durationUnit}
+              testID={TestIDs.VerticalPickerGestureHandlerDuration.name()}
+              onChange={(i) => setDurationUnit(i)}
+              flex={1}
+            />
+          </>
+        )}
 
-              <View style={{ flex: 1, justifyContent: "center" }}>
-                <RegularButton
-                  onPress={() => {
-                    _addItem(true);
-                    props.requestUpdate(null);
-                  }}
-                  testID={TestIDs.CreateWorkoutAddItemBtn.name()}
-                  btnStyles={{
-                    backgroundColor: theme.palette.darkGray,
-                  }}
-                  text="Update"
-                />
-              </View>
-            </View>
-          ) : (
-            <LinearGradient
-              colors={[
-                theme.palette.AWE_Green,
-                theme.palette.primary.main,
-                theme.palette.AWE_Green,
-              ]} // Bright on ends, dark in the middle
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              locations={[0, 0.5, 1]} // Middle color at 50% of the gradient
-              style={{ borderRadius: 8 }}
-            >
-              <RegularButton
-                onPress={() => _addItem()}
-                testID={TestIDs.CreateWorkoutAddItemBtn.name()}
-                btnStyles={{
-                  backgroundColor: theme.palette.transparent,
-                  borderColor: "#ffffff",
-                  borderWidth: 1,
-                }}
-                text="Add Item"
-              />
-            </LinearGradient>
-          )}
-        </View>
+        {showQuantity === 2 && (
+          <>
+            <NumericField
+              label="Distance"
+              value={distance}
+              placeholder="5"
+              testID={TestIDs.AddItemDistanceField.name()}
+              onChange={(t) => {
+                if (
+                  WORKOUT_TYPES[props.schemeType] == STANDARD_W ||
+                  WORKOUT_TYPES[props.schemeType] == REPS_W ||
+                  WORKOUT_TYPES[props.schemeType] == CREATIVE_W
+                ) {
+                  setDistance(numFilter(t));
+                  setReps(numFilter("0"));
+                  setDuration(numFilter("0"));
+                } else {
+                  setDistance(numFilterWithSpaces(t));
+                  setReps(numFilterWithSpaces("0"));
+                  setDuration(numFilterWithSpaces("0"));
+                }
+              }}
+            />
+            <SwipeUnit
+              label="Distance unit"
+              data={DISTANCE_UNITS}
+              displayIndex={distanceUnit}
+              testID={TestIDs.VerticalPickerGestureHandlerDistance.name()}
+              onChange={(i) => {
+                setPercentOfWeightUnit(initPercentOfWeightUnit);
+                setDistanceUnit(i);
+              }}
+              flex={1}
+            />
+          </>
+        )}
       </View>
+
+      {/* ── Weight row ────────────────────────────────────────────────────── */}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+        <NumericField
+          label={`Weight (${weightUnit})`}
+          value={weight}
+          placeholder="100"
+          testID={TestIDs.AddItemWeightField.name()}
+          helperText={weightError}
+          onChange={(t) => {
+            if (weightError.length > 0) setWeightError("");
+            if (
+              WORKOUT_TYPES[props.schemeType] == STANDARD_W ||
+              WORKOUT_TYPES[props.schemeType] == REPS_W ||
+              WORKOUT_TYPES[props.schemeType] == ROUNDS_W
+            ) {
+              setWeight(numFilterWithSpaces(t));
+            } else {
+              setWeight(numFilter(t));
+            }
+          }}
+        />
+        <SwipeUnit
+          label="Weight unit"
+          data={WEIGHT_UNITS}
+          displayIndex={WEIGHT_UNITS.indexOf(weightUnit)}
+          testID={TestIDs.VerticalPickerGestureHandlerWtUnit.name()}
+          onChange={(i) => {
+            setPercentOfWeightUnit(initPercentOfWeightUnit);
+            setWeightUnit(WEIGHT_UNITS[i]);
+          }}
+          flex={1}
+        />
+
+        {/* Pause field — only for pause-type exercises */}
+        {isPausedItem && (
+          <NumericField
+            label="Pause (s)"
+            value={pauseDuration}
+            placeholder="3"
+            testID={TestIDs.AddItemPauseDurField.name()}
+            isError={repsSchemeRoundsError}
+            helperText={repSchemeRoundsErrorText}
+            onChange={(t) => setPauseDuration(numFilter(t))}
+          />
+        )}
+      </View>
+
+      {/* ── Rest row ──────────────────────────────────────────────────────── */}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+        <NumericField
+          label="Rest"
+          value={restDuration}
+          placeholder="60"
+          testID={TestIDs.AddItemRestField.name()}
+          onChange={(t) => setRestDuration(numFilter(t))}
+        />
+        <SwipeUnit
+          label="Rest unit"
+          data={DURATION_UNITS}
+          displayIndex={restDurationUnit}
+          testID={TestIDs.VerticalPickerGestureHandlerRestUnit.name()}
+          onChange={(i) => setRestDurationUnit(i)}
+          flex={1}
+        />
+
+        {/* % of field — only shown when weight unit is % */}
+        {weightUnit === "%" && (
+          <NumericField
+            label="% of"
+            value={percentOfWeightUnit}
+            placeholder="1RM"
+            testID={TestIDs.AddItemPercentOfField.name()}
+            onChange={(t) => setPercentOfWeightUnit(t)}
+          />
+        )}
+      </View>
+
+      {/* ── Action buttons ────────────────────────────────────────────────── */}
+      {isEditing ? (
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => props.requestUpdate(null)}
+            activeOpacity={0.75}
+            style={{
+              flex: 1,
+              paddingVertical: 13,
+              borderRadius: 12,
+              borderWidth: 1.5,
+              borderColor: `${theme.palette.lightGray}40`,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+            }}
+          >
+            <Icon
+              name="close-outline"
+              size={16}
+              color={theme.palette.gray}
+              style={{ marginRight: 5 }}
+            />
+            <TSInputTextSm textStyles={{ color: theme.palette.gray, fontSize: 13 }}>
+              Cancel
+            </TSInputTextSm>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            testID={TestIDs.CreateWorkoutAddItemBtn.name()}
+            onPress={() => {
+              _addItem(true);
+              props.requestUpdate(null);
+            }}
+            activeOpacity={0.8}
+            style={{
+              flex: 2,
+              paddingVertical: 13,
+              borderRadius: 12,
+              backgroundColor: theme.palette.AWE_Yellow,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+            }}
+          >
+            <Icon
+              name="checkmark-outline"
+              size={16}
+              color={theme.palette.backgroundColor}
+              style={{ marginRight: 5 }}
+            />
+            <TSInputTextSm
+              textStyles={{
+                color: theme.palette.backgroundColor,
+                fontWeight: "700",
+                fontSize: 13,
+              }}
+            >
+              Update Item
+            </TSInputTextSm>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          testID={TestIDs.CreateWorkoutAddItemBtn.name()}
+          onPress={() => _addItem()}
+          activeOpacity={0.8}
+          style={{
+            paddingVertical: 14,
+            borderRadius: 12,
+            backgroundColor: theme.palette.AWE_Green,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+          }}
+        >
+          <Icon
+            name="add"
+            size={18}
+            color={theme.palette.backgroundColor}
+            style={{ marginRight: 5 }}
+          />
+          <TSInputTextSm
+            textStyles={{
+              color: theme.palette.backgroundColor,
+              fontWeight: "700",
+              fontSize: 14,
+            }}
+          >
+            Add Item
+          </TSInputTextSm>
+        </TouchableOpacity>
+      )}
+
       <AlertModal
         bodyText={weightError}
         modalVisible={showWeightAlertModal}
         onRequestClose={() => setShowWeightAlertModal(false)}
         closeText="Close"
-        key={`AlertWeightErrorModal`}
+        key="AlertWeightErrorModal"
       />
     </View>
   );

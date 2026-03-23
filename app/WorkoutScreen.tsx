@@ -1288,21 +1288,16 @@ const WorkoutScreen: FunctionComponent = () => {
         modalVisible={showFinishWorkoutGroupModal}
         onRequestClose={() => setShowFinishWorkoutGroupModal(false)}
       />
-      {workoutGroup.workouts && workoutGroup.workouts?.length > 0 ? (
-        <FinishDualWorkoutItems
-          bodyText=""
-          workoutGroup={workoutGroup}
-          key={"showFinishedDualItems"}
-          closeText="Close"
-          modalVisible={showFinishDualWorkoutItems}
-          onRequestClose={() => setShowFinishDualWorkoutItems(false)}
-          setShowFinishWorkoutGroupModal={() =>
-            setShowFinishWorkoutGroupModal(false)
-          }
-        />
-      ) : (
-        <></>
-      )}
+      <FinishDualWorkoutItems
+        bodyText=""
+        workoutGroup={workoutGroup}
+        closeText="Close"
+        modalVisible={showFinishDualWorkoutItems}
+        onRequestClose={() => setShowFinishDualWorkoutItems(false)}
+        setShowFinishWorkoutGroupModal={() =>
+          setShowFinishWorkoutGroupModal(false)
+        }
+      />
     </View>
   );
 };

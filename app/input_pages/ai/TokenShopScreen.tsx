@@ -1,7 +1,8 @@
-import React, { FunctionComponent, useState } from "react";
+import React, { FunctionComponent, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   TouchableOpacity,
   View,
@@ -9,6 +10,7 @@ import {
 import { useTheme } from "styled-components/native";
 import { router, useLocalSearchParams } from "expo-router";
 import Icon from "react-native-vector-icons/Ionicons";
+import Purchases, { PurchasesStoreProduct } from "react-native-purchases";
 import {
   TSCaptionText,
   TSInputTextSm,
@@ -29,19 +31,21 @@ const PageContainer = styled(Container)`
   width: 100%;
 `;
 
-const fmt = (n: number) =>
-  n >= 1_000_000
-    ? `${(n / 1_000_000).toFixed(1)}M`
-    : n >= 1_000
-    ? `${(n / 1_000).toFixed(0)}k`
-    : `${n}`;
+// RevenueCat offering identifier for credit consumables
+const RC_CREDITS_OFFERING = "ai_credits";
+
+// Tokens credited per AI credit (must match backend TOKENS_PER_CREDIT)
+const TOKENS_PER_CREDIT = 18_000;
 
 type Package = {
-  id: string;
   name: string;
+  credits: number;
   tokens: number;
   price_usd: number;
   description: string;
+  apple_product_id: string;
+  google_product_id: string;
+  stripe_price_id: string;
 };
 
 const TokenShopScreen: FunctionComponent = () => {
@@ -49,51 +53,98 @@ const TokenShopScreen: FunctionComponent = () => {
   const params = useLocalSearchParams();
   const userId = params.userId as string;
 
-  const { data, isLoading, refetch } = useGetTokenStatusQuery(userId, { skip: !userId });
+  const { data, isLoading, refetch, isFetching } = useGetTokenStatusQuery(userId, {
+    skip: !userId,
+    refetchOnMountOrArgChange: true,
+  });
   const [purchaseTokens, { isLoading: isPurchasing }] = usePurchaseTokensMutation();
-  const [purchasingId, setPurchasingId] = useState<string | null>(null);
+  const [purchasingId, setPurchasingId]               = useState<string | null>(null);
+  const [rcProducts, setRcProducts]                   = useState<PurchasesStoreProduct[]>([]);
 
-  const handlePurchase = (pkg: Package) => {
-    Alert.alert(
-      `Buy ${pkg.name}`,
-      `Add ${fmt(pkg.tokens)} tokens for $${pkg.price_usd.toFixed(2)}?\n\n(Mock purchase — no real charge)`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Buy",
-          onPress: async () => {
-            setPurchasingId(pkg.id);
-            try {
-              const result = await purchaseTokens({
-                package_id: pkg.id,
-                method: "mock",
-                user_id: userId,
-              }).unwrap();
-              Alert.alert(
-                "✅ Tokens Added",
-                `${fmt(result.tokens_added)} tokens added!\nNew balance: ${fmt(result.remaining_tokens)}`
-              );
-            } catch (e: any) {
-              Alert.alert("Error", e?.data?.error ?? "Purchase failed.");
-            } finally {
-              setPurchasingId(null);
-            }
-          },
-        },
-      ]
-    );
+  // Load RevenueCat products from the ai_credits offering
+  useEffect(() => {
+    Purchases.getOfferings()
+      .then((offerings) => {
+        const offering = offerings.all[RC_CREDITS_OFFERING];
+        const products = offering?.availablePackages.map((p) => p.product) ?? [];
+        setRcProducts(products);
+      })
+      .catch((e) => console.warn("[TokenShop] getOfferings failed:", e));
+  }, []);
+
+  const nativeProductId = (pkg: Package) =>
+    Platform.OS === "ios" ? pkg.apple_product_id : pkg.google_product_id;
+
+  const getRcProduct = (pkg: Package) =>
+    rcProducts.find((p) => p.productIdentifier === nativeProductId(pkg));
+
+  const handlePurchase = async (pkg: Package) => {
+    const rcProduct = getRcProduct(pkg);
+
+    if (!rcProduct) {
+      // Fallback: show info that products are not yet configured
+      Alert.alert(
+        "Not Available",
+        "This pack isn't available for purchase yet. Please check back soon.",
+      );
+      return;
+    }
+
+    const pkgNativeId = nativeProductId(pkg);
+    setPurchasingId(pkgNativeId);
+    try {
+      const { customerInfo, transaction } =
+        await Purchases.purchaseStoreProduct(rcProduct);
+
+      // Credit tokens on our backend. If the RevenueCat webhook arrives first
+      // the duplicate check will skip the double-credit gracefully.
+      const transactionId =
+        (transaction as any)?.transactionIdentifier ??
+        (transaction as any)?.orderId ??
+        "";
+
+      await purchaseTokens({
+        package_id:      pkgNativeId,  // store-native ID — matches TOKEN_PACKAGES_MAP
+        method:          Platform.OS === "ios" ? "apple" : "google",
+        transaction_ref: transactionId,
+        user_id:         userId,
+      }).unwrap();
+
+      await refetch();
+
+      Alert.alert(
+        "Credits Added!",
+        `${pkg.credits} AI Credits added to your account.`,
+      );
+    } catch (e: any) {
+      // User cancelled — don't show an error
+      if (e?.userCancelled) return;
+      console.warn("[TokenShop] purchase error:", e);
+      Alert.alert("Purchase Failed", e?.message ?? "Something went wrong. Please try again.");
+    } finally {
+      setPurchasingId(null);
+    }
   };
 
   const remaining = data?.remaining_tokens ?? 0;
   const used      = data?.total_tokens_used ?? 0;
   const total     = remaining + used > 0 ? remaining + used : 1;
   const pct       = Math.max(0, Math.min(1, remaining / total));
-  const barColor  =
+  const creditsRemaining = Math.floor(remaining / TOKENS_PER_CREDIT);
+
+  const barColor =
     pct > 0.5
       ? theme.palette.AWE_Green
       : pct > 0.2
       ? theme.palette.AWE_Yellow ?? "#f5c518"
       : theme.palette.AWE_Red ?? "#e74c3c";
+
+  const packages: Package[] = data?.packages ?? [];
+
+  // Savings % relative to the Starter per-credit price ($3.99 / 5 = $0.798/credit)
+  const basePerCredit = packages.length > 0 ? packages[0].price_usd / packages[0].credits : 0.798;
+  const savingsPct = (pkg: Package) =>
+    Math.round((1 - pkg.price_usd / pkg.credits / basePerCredit) * 100);
 
   return (
     <PageContainer>
@@ -106,7 +157,10 @@ const TokenShopScreen: FunctionComponent = () => {
         <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
           <Icon name="chevron-back" size={26} color={theme.palette.text} />
         </TouchableOpacity>
-        <TSTitleText textStyles={{ flex: 1, fontSize: 18 }}>AI Token Shop</TSTitleText>
+        <TSTitleText textStyles={{ flex: 1, fontSize: 18 }}>AI Credits</TSTitleText>
+        <TouchableOpacity onPress={refetch} disabled={isFetching} style={{ marginRight: 10 }}>
+          <Icon name="refresh" size={22} color={isFetching ? theme.palette.gray : theme.palette.text} />
+        </TouchableOpacity>
         <Icon name="flash" size={20} color={theme.palette.AWE_Yellow ?? "#f5c518"} />
       </View>
 
@@ -120,12 +174,15 @@ const TokenShopScreen: FunctionComponent = () => {
             backgroundColor: theme.palette.darkGray,
             borderRadius: 16, padding: 16, marginBottom: 24,
           }}>
-            <TSCaptionText textStyles={{ color: theme.palette.gray, marginBottom: 6 }}>
+            <TSCaptionText textStyles={{ color: theme.palette.gray, marginBottom: 4 }}>
               Current Balance
             </TSCaptionText>
-            <TSTitleText textStyles={{ fontSize: 28, color: barColor, marginBottom: 8 }}>
-              {fmt(remaining)} tokens
+            <TSTitleText textStyles={{ fontSize: 28, color: barColor, marginBottom: 4 }}>
+              {creditsRemaining} AI Credits
             </TSTitleText>
+            <TSCaptionText textStyles={{ color: theme.palette.gray, marginBottom: 10 }}>
+              1 credit = 1 workout generation or ~8 chat messages
+            </TSCaptionText>
 
             {/* Progress bar */}
             <View style={{
@@ -138,14 +195,9 @@ const TokenShopScreen: FunctionComponent = () => {
               }} />
             </View>
 
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-                {fmt(used)} used lifetime
-              </TSCaptionText>
-              <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-                Resets {data?.reset_at ? new Date(data.reset_at).toLocaleDateString() : "—"}
-              </TSCaptionText>
-            </View>
+            <TSCaptionText textStyles={{ color: theme.palette.gray }}>
+              Resets {data?.reset_at ? new Date(data.reset_at).toLocaleDateString() : "—"}
+            </TSCaptionText>
           </View>
         )}
 
@@ -154,11 +206,18 @@ const TokenShopScreen: FunctionComponent = () => {
           Top Up
         </TSInputTextSm>
 
-        {(data?.packages ?? []).map((pkg: Package, i: number) => {
-          const isThisPurchasing = isPurchasing && purchasingId === pkg.id;
-          const isPopular = i === 1;
+        {packages.map((pkg: Package, i: number) => {
+          const isThisPurchasing = isPurchasing && purchasingId === nativeProductId(pkg);
+          const isPopular        = i === 1;
+          const isPro            = i === packages.length - 1 && i > 0;
+          const savings          = savingsPct(pkg);
+          const rcProduct        = getRcProduct(pkg);
+          // Show store price if available, otherwise fall back to our price
+          const displayPrice     = rcProduct?.priceString ?? `$${pkg.price_usd.toFixed(2)}`;
+          const perCredit        = (pkg.price_usd / pkg.credits).toFixed(2);
+
           return (
-            <View key={pkg.id} style={{ marginBottom: 12, position: "relative" }}>
+            <View key={pkg.apple_product_id} style={{ marginBottom: 12, position: "relative" }}>
               {isPopular && (
                 <View style={{
                   position: "absolute", top: -10, right: 16, zIndex: 1,
@@ -166,7 +225,18 @@ const TokenShopScreen: FunctionComponent = () => {
                   paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10,
                 }}>
                   <TSCaptionText textStyles={{ color: theme.palette.white, fontWeight: "700" }}>
-                    POPULAR
+                    MOST POPULAR
+                  </TSCaptionText>
+                </View>
+              )}
+              {isPro && savings > 0 && (
+                <View style={{
+                  position: "absolute", top: -10, right: 16, zIndex: 1,
+                  backgroundColor: theme.palette.AWE_Blue,
+                  paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10,
+                }}>
+                  <TSCaptionText textStyles={{ color: theme.palette.white, fontWeight: "700" }}>
+                    SAVE {savings}%
                   </TSCaptionText>
                 </View>
               )}
@@ -180,31 +250,41 @@ const TokenShopScreen: FunctionComponent = () => {
                   borderRadius: 14,
                   padding: 16,
                   borderWidth: isPopular ? 2 : 1,
-                  borderColor: isPopular ? theme.palette.AWE_Green : theme.palette.gray,
+                  borderColor: isPopular
+                    ? theme.palette.AWE_Green
+                    : isPro
+                    ? theme.palette.AWE_Blue
+                    : theme.palette.gray,
                 }}
               >
                 <View style={{
                   width: 44, height: 44, borderRadius: 22,
-                  backgroundColor: `${theme.palette.AWE_Green}22`,
+                  backgroundColor: `${isPopular ? theme.palette.AWE_Green : theme.palette.AWE_Blue}22`,
                   alignItems: "center", justifyContent: "center", marginRight: 14,
                 }}>
-                  <Icon name="flash" size={22} color={theme.palette.AWE_Green} />
+                  <Icon
+                    name="flash"
+                    size={22}
+                    color={isPopular ? theme.palette.AWE_Green : theme.palette.AWE_Blue}
+                  />
                 </View>
+
                 <View style={{ flex: 1 }}>
                   <TSInputTextSm textStyles={{ color: theme.palette.text, fontWeight: "700" }}>
-                    {pkg.name}
+                    {pkg.credits} AI Credits
                   </TSInputTextSm>
                   <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-                    {fmt(pkg.tokens)} tokens · {pkg.description}
+                    ${perCredit}/credit · {pkg.name}
                   </TSCaptionText>
                 </View>
+
                 <View style={{ alignItems: "flex-end" }}>
                   {isThisPurchasing ? (
                     <ActivityIndicator size="small" color={theme.palette.AWE_Green} />
                   ) : (
                     <>
                       <TSSnippetText textStyles={{ color: theme.palette.text, fontWeight: "700" }}>
-                        ${pkg.price_usd.toFixed(2)}
+                        {displayPrice}
                       </TSSnippetText>
                       <TSCaptionText textStyles={{ color: theme.palette.AWE_Green }}>
                         Buy →
@@ -217,48 +297,52 @@ const TokenShopScreen: FunctionComponent = () => {
           );
         })}
 
-        {/* Mock disclaimer */}
+        {/* What is a credit? */}
         <View style={{
-          marginTop: 16, padding: 12, borderRadius: 10,
-          backgroundColor: `${theme.palette.AWE_Blue}22`,
-          borderWidth: 1, borderColor: theme.palette.AWE_Blue,
+          marginTop: 8, marginBottom: 8, padding: 14, borderRadius: 12,
+          backgroundColor: theme.palette.darkGray,
         }}>
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-            <Icon name="information-circle-outline" size={16} color={theme.palette.AWE_Blue} style={{ marginRight: 6 }} />
-            <TSCaptionText textStyles={{ color: theme.palette.AWE_Blue, fontWeight: "700" }}>
-              Dev Mode
-            </TSCaptionText>
-          </View>
-          <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-            Purchases are mocked — no real charges. Apple/Google Pay integration coming soon.
+          <TSCaptionText textStyles={{ color: theme.palette.gray, marginBottom: 6, fontWeight: "700" }}>
+            What counts as 1 credit?
           </TSCaptionText>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+            <Icon name="sparkles-outline" size={14} color={theme.palette.AWE_Green} style={{ marginRight: 6 }} />
+            <TSCaptionText textStyles={{ color: theme.palette.gray }}>1 AI workout generation</TSCaptionText>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Icon name="chatbubble-outline" size={14} color={theme.palette.AWE_Green} style={{ marginRight: 6 }} />
+            <TSCaptionText textStyles={{ color: theme.palette.gray }}>~8–10 coaching chat messages</TSCaptionText>
+          </View>
         </View>
 
         {/* Purchase history */}
         {data?.purchase_history?.length > 0 && (
           <>
-            <TSInputTextSm textStyles={{ color: theme.palette.text, fontWeight: "700", marginTop: 24, marginBottom: 12 }}>
+            <TSInputTextSm textStyles={{ color: theme.palette.text, fontWeight: "700", marginTop: 20, marginBottom: 12 }}>
               Purchase History
             </TSInputTextSm>
-            {data.purchase_history.map((p: any, i: number) => (
-              <View key={i} style={{
-                flexDirection: "row", justifyContent: "space-between",
-                paddingVertical: 10, borderBottomWidth: 1,
-                borderBottomColor: theme.palette.darkGray,
-              }}>
-                <View>
-                  <TSCaptionText textStyles={{ color: theme.palette.text }}>
-                    +{fmt(p.tokens_added)} tokens
-                  </TSCaptionText>
+            {data.purchase_history.map((p: any, i: number) => {
+              const credits = Math.floor(p.tokens_added / TOKENS_PER_CREDIT);
+              return (
+                <View key={i} style={{
+                  flexDirection: "row", justifyContent: "space-between",
+                  paddingVertical: 10, borderBottomWidth: 1,
+                  borderBottomColor: theme.palette.darkGray,
+                }}>
+                  <View>
+                    <TSCaptionText textStyles={{ color: theme.palette.text }}>
+                      +{credits} AI Credits
+                    </TSCaptionText>
+                    <TSCaptionText textStyles={{ color: theme.palette.gray }}>
+                      {p.method} · {new Date(p.created_at).toLocaleDateString()}
+                    </TSCaptionText>
+                  </View>
                   <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-                    {p.method} · {new Date(p.created_at).toLocaleDateString()}
+                    ${parseFloat(p.price_paid_usd).toFixed(2)}
                   </TSCaptionText>
                 </View>
-                <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-                  ${parseFloat(p.price_paid_usd).toFixed(2)}
-                </TSCaptionText>
-              </View>
-            ))}
+              );
+            })}
           </>
         )}
       </ScrollView>

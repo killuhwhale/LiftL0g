@@ -6,12 +6,7 @@ import { TSCaptionText, TSInputTextSm } from "./Text/Text";
 import { useGetTokenStatusQuery } from "@/src/redux/api/apiSlice";
 import { router } from "expo-router";
 
-const fmt = (n: number) =>
-  n >= 1_000_000
-    ? `${(n / 1_000_000).toFixed(1)}M`
-    : n >= 1_000
-    ? `${(n / 1_000).toFixed(0)}k`
-    : `${n}`;
+const TOKENS_PER_CREDIT = 18_000;
 
 type Props = { userId: string | number };
 
@@ -21,10 +16,11 @@ const TokenStatusBar: FunctionComponent<Props> = ({ userId }) => {
 
   if (isLoading || !data) return null;
 
-  const remaining = data.remaining_tokens ?? 0;
-  const used      = data.total_tokens_used ?? 0;
-  const total     = remaining + used > 0 ? remaining + used : 1;
-  const pct       = Math.max(0, Math.min(1, remaining / total));
+  const remaining        = data.remaining_tokens ?? 0;
+  const used             = data.total_tokens_used ?? 0;
+  const total            = remaining + used > 0 ? remaining + used : 1;
+  const pct              = Math.max(0, Math.min(1, remaining / total));
+  const creditsRemaining = Math.floor(remaining / TOKENS_PER_CREDIT);
 
   const barColor =
     pct > 0.5
@@ -47,11 +43,11 @@ const TokenStatusBar: FunctionComponent<Props> = ({ userId }) => {
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Icon name="flash-outline" size={14} color={barColor} style={{ marginRight: 4 }} />
           <TSInputTextSm textStyles={{ color: theme.palette.text, fontWeight: "600" }}>
-            AI Tokens
+            AI Credits
           </TSInputTextSm>
         </View>
         <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-          {fmt(remaining)} left · {fmt(used)} used
+          {creditsRemaining} credits remaining
         </TSCaptionText>
       </View>
 

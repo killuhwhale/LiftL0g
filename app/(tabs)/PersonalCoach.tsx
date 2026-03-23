@@ -91,10 +91,7 @@ const PersonalCoachScreen: FunctionComponent = () => {
 
   const handleGenerateWorkout = () => {
     if (!profile) return;
-    router.push({
-      pathname: "/input_pages/gyms/AIQuickWorkoutScreen",
-      params: { initialPrompt: buildCoachPrompt(profile) },
-    });
+    router.push("/input_pages/gyms/AIQuickWorkoutScreen");
   };
 
   const handleOpenChat = () => {
