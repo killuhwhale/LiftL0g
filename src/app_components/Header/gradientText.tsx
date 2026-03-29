@@ -1,10 +1,13 @@
-import MaskedView from "@react-native-masked-view/masked-view";
-import React, { FunctionComponent } from "react";
-import { StyleProp, TextStyle, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import React, { FunctionComponent, useState } from "react";
+import { StyleProp, StyleSheet, Text, TextStyle, View } from "react-native";
+import Svg, {
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+  Text as SvgText,
+} from "react-native-svg";
 import { useTheme } from "styled-components/native";
-import { TSTitleText } from "../Text/Text";
-import { lightenHexColor } from "../shared";
+import { lightenHexColor, tsPageTitle } from "../shared";
 
 interface GradientTextProps {
   textStyles?: StyleProp<TextStyle>;
@@ -13,63 +16,71 @@ interface GradientTextProps {
   angle?: number;
 }
 
-// const g1 = twrnc.color("bg-emerald-100");
-// const g2 = twrnc.color("bg-emerald-200");
-// const g3 = twrnc.color("bg-emerald-300");
-// const g4 = twrnc.color("bg-emerald-400");
-// const g5 = twrnc.color("bg-emerald-500");
-// const g6 = twrnc.color("bg-emerald-600");
-// const g7 = twrnc.color("bg-emerald-700");
-// const g8 = twrnc.color("bg-emerald-800");
-// const g9 = twrnc.color("bg-emerald-900");
-// const _COLORS = [
-//   g1 ?? "#0F0",
-//   g2 ?? "#0F0",
-//   g3 ?? "#0F0",
-//   g4 ?? "#0F0",
-//   g5 ?? "#0F0",
-//   g6 ?? "#0F0",
-//   g7 ?? "#0F0",
-//   g8 ?? "#0F0",
-//   g9 ?? "#0F0",
-// ];
-
-// function getColors(reversed: boolean) {
-//   return reversed ? _COLORS.toReversed() : _COLORS;
-// }
-
 const GradientText: FunctionComponent<GradientTextProps> = (props) => {
   const theme = useTheme();
-  const _COLORS = [
+  const [size, setSize] = useState<{ width: number; height: number } | null>(
+    null
+  );
+
+  const stops = [
     lightenHexColor(theme.palette.AWE_Green, 0.35),
-    lightenHexColor(theme.palette.AWE_Green, 0.45),
-    lightenHexColor(theme.palette.AWE_Green, 0.5),
-    lightenHexColor(theme.palette.AWE_Green, 0.6),
     lightenHexColor(theme.palette.AWE_Green, 0.7),
-    lightenHexColor(theme.palette.AWE_Green, 0.8),
-    lightenHexColor(theme.palette.AWE_Green, 1),
     lightenHexColor(theme.palette.AWE_Green, 1.5),
     lightenHexColor(theme.palette.AWE_Green, 2),
   ];
+  const orderedStops = props.reversed ? [...stops].reverse() : stops;
+
+  // Merge TSTitleText base size with any caller overrides for accurate measurement
+  const flat =
+    StyleSheet.flatten([{ fontSize: tsPageTitle }, props.textStyles]) ?? {};
+  const fontSize = (flat.fontSize as number) ?? tsPageTitle;
+  const fontFamily = (flat.fontFamily as string) ?? undefined;
+  const fontWeight = (flat.fontWeight as string) ?? undefined;
 
   return (
-    <MaskedView
-      maskElement={
-        <View style={{ backgroundColor: "transparent" }}>
-          <TSTitleText textStyles={props.textStyles}>{props.text}</TSTitleText>
-        </View>
-      }
-    >
-      <LinearGradient
-        colors={(props.reversed ? _COLORS.toReversed() : _COLORS) as [string, string, ...string[]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <View>
+      {/* Invisible RN Text drives the layout dimensions */}
+      <Text
+        style={[flat, { opacity: 0 }]}
+        onLayout={(e) => setSize(e.nativeEvent.layout)}
       >
-        <TSTitleText textStyles={[{ opacity: 0 }, props.textStyles]}>
-          {props.text}
-        </TSTitleText>
-      </LinearGradient>
-    </MaskedView>
+        {props.text}
+      </Text>
+
+      {/* SVG paints gradient text over the measured space */}
+      {size && (
+        <Svg
+          width={size.width}
+          height={size.height}
+          style={StyleSheet.absoluteFill}
+        >
+          <Defs>
+            <SvgLinearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+              {orderedStops.map((color, i) => (
+                <Stop
+                  key={i}
+                  offset={`${Math.round(
+                    (i / (orderedStops.length - 1)) * 100
+                  )}%`}
+                  stopColor={color}
+                  stopOpacity="1"
+                />
+              ))}
+            </SvgLinearGradient>
+          </Defs>
+          <SvgText
+            fill="url(#g)"
+            fontSize={fontSize}
+            fontFamily={fontFamily}
+            fontWeight={fontWeight}
+            x="0"
+            y={fontSize}
+          >
+            {props.text}
+          </SvgText>
+        </Svg>
+      )}
+    </View>
   );
 };
 

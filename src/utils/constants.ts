@@ -5,7 +5,7 @@ const DOMAIN_NAME = process.env.EXPO_PUBLIC_DOMAIN_NAME || ""
 const isDevEnv = ["development", "test"].indexOf(nodeEnv) >= 0;
 
 const BASEURL = isDevEnv
-  ? "http://localhost:8000/"
+  ? "http://192.168.68.55:8000/"
   : `https://${DOMAIN_NAME}/ffapi/`;
 
 console.log("Using Baseurl: ", BASEURL);

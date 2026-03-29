@@ -19,7 +19,7 @@ import {
   TSSnippetText,
   TSTitleText,
 } from "../Text/Text";
-import { isDateInFuture, lightenHexColor } from "../shared";
+import { lightenHexColor } from "../shared";
 import { AnyWorkoutItem } from "../Cards/types";
 import { useMaxes } from "@/hooks/useMaxes";
 import { useRouter } from "expo-router";
@@ -91,11 +91,6 @@ const CreateWorkoutPrompt: React.FC<ChatPromptModalProps> = ({
   const handleSubmit = async () => {
     if (!text.trim()) return;
     if (!profileData.user) return;
-    if (!isDateInFuture(profileData.user)) {
-      setShowBecomeMember(true);
-      return;
-    }
-
     try {
       const userMaxesNoID = workoutItemMaxes.map(({ id, ...rest }: any) => rest);
       const result = await submitPrompt({

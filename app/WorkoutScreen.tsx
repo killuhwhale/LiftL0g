@@ -1,5 +1,6 @@
 import React, {
   FunctionComponent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -77,6 +78,12 @@ import FullScreenSpinner from "@/src/app_components/Spinner";
 import DatePicker from "react-native-date-picker";
 import TextFieldModal from "@/src/app_components/modals/TextFieldModal";
 import { UserProps } from "./types";
+import {
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetModal,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 const Row = styled.View`
   flex-direction: row;
   justify-content: space-between;
@@ -574,7 +581,20 @@ const WorkoutScreen: FunctionComponent = () => {
   mediaClass = showingOGWorkoutGroup ? WORKOUT_MEDIA : COMPLETED_WORKOUT_MEDIA;
 
   const [editable, setEditable] = useState(false);
-  const [showCreate, setShowCreate] = useState(false);
+  const addWorkoutSheetRef = useRef<BottomSheetModal>(null);
+  const addWorkoutSnapPoints = useMemo(() => ["72%"], []);
+  const renderAddWorkoutBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.55}
+        pressBehavior="close"
+      />
+    ),
+    []
+  );
 
   const [deleteWorkoutGroupMutation, { isLoading: isDeleteOGWorkoutGroup }] =
     useDeleteWorkoutGroupMutation();
@@ -941,7 +961,7 @@ const WorkoutScreen: FunctionComponent = () => {
           <View style={{ flex: 1 }} />
 
           {/* Finish Workout — right, only when in progress with workouts */}
-          {data && showingOGWorkoutGroup && !data.finished && workouts.length > 0 && !showCreate ? (
+          {data && showingOGWorkoutGroup && !data.finished && workouts.length > 0 ? (
             <Pressable
               onPress={() => setShowFinishWorkoutGroupModal(true)}
               style={{
@@ -967,10 +987,10 @@ const WorkoutScreen: FunctionComponent = () => {
             </Pressable>
           ) : null}
 
-          {/* Add Workout toggle — right, only when in progress */}
+          {/* Add Workout — right, only when in progress */}
           {data && showingOGWorkoutGroup && !data.finished ? (
             <Pressable
-              onPress={() => setShowCreate(!showCreate)}
+              onPress={() => addWorkoutSheetRef.current?.present()}
               testID={TestIDs.ToggleShowCreateWorkoutBtns.name()}
               style={{
                 flexDirection: "row",
@@ -978,31 +998,23 @@ const WorkoutScreen: FunctionComponent = () => {
                 borderRadius: 12,
                 paddingHorizontal: 14,
                 paddingVertical: 9,
-                backgroundColor: showCreate
-                  ? lightenHexColor(theme.palette.gray, 0.12)
-                  : lightenHexColor(theme.palette.AWE_Green, 0.14),
+                backgroundColor: lightenHexColor(theme.palette.AWE_Green, 0.14),
                 borderWidth: 1,
-                borderColor: showCreate
-                  ? lightenHexColor(theme.palette.gray, 0.2)
-                  : lightenHexColor(theme.palette.AWE_Green, 0.3),
+                borderColor: lightenHexColor(theme.palette.AWE_Green, 0.3),
               }}
             >
               <Icon
-                name={showCreate ? "close-outline" : "add-circle-outline"}
-                color={
-                  showCreate ? theme.palette.text : theme.palette.AWE_Green
-                }
+                name="add-circle-outline"
+                color={theme.palette.AWE_Green}
                 style={{ fontSize: 15, marginRight: 6 }}
               />
               <TSCaptionText
                 textStyles={{
-                  color: showCreate
-                    ? theme.palette.text
-                    : theme.palette.AWE_Green,
+                  color: theme.palette.AWE_Green,
                   fontWeight: "700",
                 }}
               >
-                {showCreate ? "Cancel" : "Add Workout"}
+                Add Workout
               </TSCaptionText>
             </Pressable>
           ) : null}
@@ -1040,76 +1052,115 @@ const WorkoutScreen: FunctionComponent = () => {
           }}
         />
 
-        {/* === Workout type chips (expanded when Add Workout is active) === */}
-        {data && showingOGWorkoutGroup && !data.finished && showCreate ? (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              paddingHorizontal: 12,
-              paddingTop: 4,
-              paddingBottom: 8,
-            }}
-          >
-            {[
-              {
-                label: "Standard",
-                color: theme.palette.AWE_Blue,
-                icon: "barbell-outline",
-                onPress: openCreateWorkoutScreenForStandard,
-                testID: TestIDs.CreateRegularWorkoutBtn.name(),
-              },
-              {
-                label: "Reps",
-                color: theme.palette.AWE_Red,
-                icon: "flame-outline",
-                onPress: openCreateWorkoutScreenForReps,
-                testID: undefined,
-              },
-              {
-                label: "Rounds",
-                color: theme.palette.AWE_Yellow,
-                icon: "sync-outline",
-                onPress: openCreateWorkoutScreenForRounds,
-                testID: undefined,
-              },
-              {
-                label: "Creative",
-                color: theme.palette.AWE_Green,
-                icon: "bulb-outline",
-                onPress: openCreateWorkoutScreenCreative,
-                testID: undefined,
-              },
-            ].map((type) => (
-              <Pressable
-                key={type.label}
-                onPress={type.onPress}
-                testID={type.testID}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: lightenHexColor(type.color, 0.12),
-                  borderRadius: 12,
-                  paddingHorizontal: 14,
-                  paddingVertical: 9,
-                  marginRight: 8,
-                  marginBottom: 6,
-                }}
-              >
-                <Icon
-                  name={type.icon}
-                  color={type.color}
-                  style={{ fontSize: 15, marginRight: 6 }}
-                />
-                <TSCaptionText
-                  textStyles={{ color: type.color, fontWeight: "700" }}
+        {/* === Add Workout bottom sheet === */}
+        <BottomSheetModal
+          ref={addWorkoutSheetRef}
+          snapPoints={addWorkoutSnapPoints}
+          enableDynamicSizing={false}
+          enablePanDownToClose
+          backdropComponent={renderAddWorkoutBackdrop}
+          backgroundStyle={{ backgroundColor: theme.palette.darkGray }}
+          handleIndicatorStyle={{
+            backgroundColor: lightenHexColor(theme.palette.lightGray, 0.3),
+            width: 40,
+          }}
+        >
+          <BottomSheetView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 8 }}>
+            <TSCaptionText
+              textStyles={{
+                color: theme.palette.text,
+                fontWeight: "700",
+                fontSize: 16,
+                marginBottom: 16,
+                textAlign: "center",
+              }}
+            >
+              Choose Workout Type
+            </TSCaptionText>
+
+            <View style={{ gap: 10 }}>
+              {[
+                {
+                  label: "Standard",
+                  desc: "Sets x Reps x Weight",
+                  color: theme.palette.AWE_Blue,
+                  icon: "barbell-outline",
+                  onPress: openCreateWorkoutScreenForStandard,
+                  testID: TestIDs.CreateRegularWorkoutBtn.name(),
+                },
+                {
+                  label: "Reps",
+                  desc: "Rep-based schemes (AMRAP, EMOM)",
+                  color: theme.palette.AWE_Red,
+                  icon: "flame-outline",
+                  onPress: openCreateWorkoutScreenForReps,
+                  testID: undefined,
+                },
+                {
+                  label: "Rounds",
+                  desc: "Round-based circuits",
+                  color: theme.palette.AWE_Yellow,
+                  icon: "sync-outline",
+                  onPress: openCreateWorkoutScreenForRounds,
+                  testID: undefined,
+                },
+                {
+                  label: "Creative",
+                  desc: "Custom format, freeform",
+                  color: theme.palette.AWE_Green,
+                  icon: "bulb-outline",
+                  onPress: openCreateWorkoutScreenCreative,
+                  testID: undefined,
+                },
+              ].map((type) => (
+                <Pressable
+                  key={type.label}
+                  onPress={() => {
+                    addWorkoutSheetRef.current?.dismiss();
+                    type.onPress();
+                  }}
+                  testID={type.testID}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: lightenHexColor(type.color, 0.1),
+                    borderRadius: 14,
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    opacity: pressed ? 0.8 : 1,
+                  })}
                 >
-                  {type.label}
-                </TSCaptionText>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: lightenHexColor(type.color, 0.18),
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 14,
+                    }}
+                  >
+                    <Icon name={type.icon} color={type.color} style={{ fontSize: 20 }} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <TSCaptionText
+                      textStyles={{ color: type.color, fontWeight: "700", fontSize: 14 }}
+                    >
+                      {type.label}
+                    </TSCaptionText>
+                    <TSCaptionText
+                      textStyles={{ color: lightenHexColor(type.color, 0.5), fontSize: 11, marginTop: 2 }}
+                    >
+                      {type.desc}
+                    </TSCaptionText>
+                  </View>
+                  <Icon name="chevron-forward" color={type.color} style={{ fontSize: 18 }} />
+                </Pressable>
+              ))}
+            </View>
+          </BottomSheetView>
+        </BottomSheetModal>
 
         {/* === Delete mode toggle === */}
         {data && !data.finished && workouts.length > 0 ? (

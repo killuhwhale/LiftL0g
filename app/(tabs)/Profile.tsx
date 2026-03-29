@@ -8,7 +8,6 @@ import {
   SCREEN_WIDTH
 } from "@/src/app_components/shared";
 import {
-  TSButtonText,
   TSCaptionText,
   TSInputText,
   TSParagrapghText,
@@ -216,6 +215,11 @@ const UserInfoPanel: FunctionComponent<UserInfoPanelProps> = (props) => {
   const [_updateUsername, { isLoading }] = useUpdateUsernameMutation();
   const [savedUsername, setSavedUsername] = useState(false);
 
+  useEffect(() => {
+    setNewUsername(username);
+    setSavedUsername(false);
+  }, [username]);
+
   const manageUpdateUsername = async (text: string) => {
     const data = new FormData();
     data.append("username", text);
@@ -401,28 +405,34 @@ const Profile: FunctionComponent = () => {
     PurchasesStoreProduct[] | null
   >(null);
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const invalidateUser = () => {
-    store.dispatch(apiSlice.util.invalidateTags(["User"]));
+    store.dispatch(apiSlice.util.invalidateTags(["User", "TOKEN_STATUS"]));
+  };
+  const refreshStatus = () => {
+    setIsRefreshing(true);
+    invalidateUser();
+    setTimeout(() => setIsRefreshing(false), 2000);
   };
 
   const makePurchase = async (product: PurchasesStoreProduct | null) => {
     if (!product) return console.log("Cannot make purchase with null product");
     try {
       console.log("Making purchase....");
+      setMakePurchaseLoading(true);
       const purchaseRes = await Purchases.purchaseStoreProduct(product);
       console.log("Made purchases for IAP: ", product.identifier, purchaseRes);
-    } catch (err) {
-      console.error("Error purchasing sub: ", err);
-    }
-    try {
-      setMakePurchaseLoading(true);
+
+      // Wait for the RevenueCat webhook to update sub_end_date on our backend,
+      // then refresh the UI.
       setTimeout(() => {
         invalidateUser();
         setMakePurchaseLoading(false);
         startThankYouFadeIn();
-      }, 150);
+      }, 5000);
     } catch (err) {
-      console.log("Error invalidating user after makepurchase: ", err);
+      console.error("Error purchasing sub: ", err);
+      setMakePurchaseLoading(false);
     }
   };
 
@@ -554,7 +564,7 @@ const Profile: FunctionComponent = () => {
   return (
     <PageContainer>
       <ScrollView
-        style={{ width: "100%" }}
+        style={{ width: "100%", flex: 1 }}
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
@@ -619,12 +629,10 @@ const Profile: FunctionComponent = () => {
             />
           ) : (
             <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-              <View style={{ alignItems: "center" }}>
-                <SubscriptionOffer
-                  makePurchase={makePurchase}
-                  products={curProducts}
-                />
-              </View>
+              <SubscriptionOffer
+                makePurchase={makePurchase}
+                products={curProducts}
+              />
             </View>
           )}
         </View>
@@ -681,13 +689,17 @@ const Profile: FunctionComponent = () => {
           <SettingsRow
             icon="refresh-outline"
             title="Refresh Subscription Status"
-            onPress={invalidateUser}
+            onPress={refreshStatus}
             rightContent={
-              <Icon
-                name="refresh-outline"
-                color={theme.palette.AWE_Green}
-                style={{ fontSize: 16 }}
-              />
+              isRefreshing ? (
+                <ActivityIndicator size="small" color={theme.palette.AWE_Green} />
+              ) : (
+                <Icon
+                  name="refresh-outline"
+                  color={theme.palette.AWE_Green}
+                  style={{ fontSize: 16 }}
+                />
+              )
             }
           />
         </View>
@@ -1035,95 +1047,117 @@ function SubscriptionOffer({ products, makePurchase }: IAPSub) {
   const theme = useTheme();
   const product = products && products?.length > 0 ? products[0] : null;
 
-  const [showPurchaseModal, setShowPruchaseModal] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   return (
-    <LinearGradient
-      colors={[theme.palette.primary.main, theme.palette.AWE_Green]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={offerStyles.card}
-    >
-      <TSCaptionText textStyles={offerStyles.headline}>Go Premium</TSCaptionText>
+    <>
       <PurchaseModal
         modalVisible={showPurchaseModal}
-        onRequestClose={() => setShowPruchaseModal(false)}
+        onRequestClose={() => setShowPurchaseModal(false)}
         product={product}
         makePurchase={makePurchase}
       />
 
-      <View style={offerStyles.features}>
-        <View style={offerStyles.featureRow}>
-          <Icon name="close-outline" size={20} color="#FFF" />
-          <TSSnippetText textStyles={offerStyles.featureText}>
-            Ad-free experience
-          </TSSnippetText>
-        </View>
-        <View style={offerStyles.featureRow}>
-          <Icon name="apps-outline" size={20} color="#FFF" />
-          <TSSnippetText textStyles={offerStyles.featureText}>
-            Create up to 15 workouts/day
-          </TSSnippetText>
-        </View>
-        <View style={offerStyles.featureRow}>
-          <Icon name="barbell-outline" size={20} color="#FFF" />
-          <TSSnippetText textStyles={offerStyles.featureText}>
-            World Class workout plans
-          </TSSnippetText>
-        </View>
-        <View style={offerStyles.featureRow}>
-          <Icon name="sparkles-outline" size={20} color="#FFF" />
-          <TSSnippetText textStyles={offerStyles.featureText}>
-            AI-powered workout generator
-          </TSSnippetText>
-        </View>
-      </View>
-
       <TouchableOpacity
-        style={[offerStyles.button, { backgroundColor: theme.palette.AWE_Green }]}
-        onPress={() => setShowPruchaseModal(true)}
+        activeOpacity={0.85}
+        onPress={() => setShowPurchaseModal(true)}
+        style={offerStyles.cardWrapper}
       >
-        <TSButtonText textStyles={offerStyles.buttonText}>
-          Unlock Premium
-        </TSButtonText>
+        <LinearGradient
+          colors={[theme.palette.primary.main, theme.palette.AWE_Green]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={offerStyles.cardContent}>
+          <View style={offerStyles.headerRow}>
+            <Icon name="star" size={22} color="#FFD700" />
+            <TSSnippetText textStyles={offerStyles.headline}>
+              Go Premium
+            </TSSnippetText>
+          </View>
+
+          <TSCaptionText textStyles={offerStyles.subtitle}>
+            Unlock the full LiftLog experience
+          </TSCaptionText>
+
+          <View style={offerStyles.pillsRow}>
+            {["Ad-free", "15 workouts/day", "AI Generator", "Workout Plans"].map(
+              (perk) => (
+                <View key={perk} style={offerStyles.pill}>
+                  <TSSnippetText textStyles={offerStyles.pillText}>
+                    {perk}
+                  </TSSnippetText>
+                </View>
+              )
+            )}
+          </View>
+
+          <View style={[offerStyles.ctaRow, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+            <TSSnippetText textStyles={offerStyles.ctaText}>
+              {product?.priceString ? `Starting at ${product.priceString}/mo` : "View Plans"}
+            </TSSnippetText>
+            <Icon name="chevron-forward" size={16} color="#FFF" />
+          </View>
+        </View>
       </TouchableOpacity>
-    </LinearGradient>
+    </>
   );
 }
 
 const offerStyles = StyleSheet.create({
-  card: {
-    width: "90%",
+  cardWrapper: {
+    width: "100%",
     alignSelf: "center",
-    borderRadius: 12,
-    padding: 20,
-    marginVertical: 8,
-    elevation: 5,
+    borderRadius: 14,
+    overflow: "hidden",
+    marginVertical: 4,
+  },
+  cardContent: {
+    padding: 18,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
   },
   headline: {
     color: "#FFF",
-    fontSize: 24,
-    textAlign: "center",
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: "bold",
   },
-  features: {
-    marginVertical: 12,
+  subtitle: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 12,
+    marginBottom: 12,
   },
-  featureRow: {
+  pillsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 14,
+  },
+  pill: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  pillText: {
+    color: "#FFF",
+    fontSize: 11,
+  },
+  ctaRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    justifyContent: "center",
+    borderRadius: 10,
+    paddingVertical: 10,
+    gap: 6,
   },
-  featureText: {
+  ctaText: {
     color: "#FFF",
-    marginLeft: 8,
-  },
-  button: {
-    borderRadius: 8,
-    paddingVertical: 12,
-    marginTop: 12,
-  },
-  buttonText: {
-    textAlign: "center",
-    fontSize: 16,
+    fontWeight: "600",
+    fontSize: 14,
   },
 });

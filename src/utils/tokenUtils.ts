@@ -5,15 +5,9 @@ const JWT_ACCESS_TOKEN_KEY = "__jwttoken_access";
 const JWT_REFRESH_TOKEN_KEY = "__jwttoken_refresh";
 
 export const clearToken = async () => {
-  try {
-    await RNSecureStorage.remove(JWT_ACCESS_TOKEN_KEY);
-    await RNSecureStorage.remove(JWT_REFRESH_TOKEN_KEY);
-    return true;
-  } catch (e) {
-    // saving error
-    console.log("Error clearing from storage: ", e);
-    return false;
-  }
+  try { await RNSecureStorage.remove(JWT_ACCESS_TOKEN_KEY); } catch (_) {}
+  try { await RNSecureStorage.remove(JWT_REFRESH_TOKEN_KEY); } catch (_) {}
+  return true;
 };
 export const storeToken = async (value: any, access = true) => {
   try {

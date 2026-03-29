@@ -983,14 +983,6 @@ export const apiSlice = createApi({
       providesTags: ["TOKEN_STATUS"],
     }),
 
-    purchaseTokens: builder.mutation({
-      query: (data) => ({
-        url: "ai/purchase_tokens/",
-        method: "POST",
-        data,
-      }),
-      invalidatesTags: ["TOKEN_STATUS"],
-    }),
   }),
 });
 
@@ -1078,6 +1070,5 @@ export const {
   useLazyPingQuery,
   useCoachChatMutation,
   useGetTokenStatusQuery,
-  usePurchaseTokensMutation,
   // usesTagLabelsGroupsForUserByDateRangeQuery,
 } = apiSlice;

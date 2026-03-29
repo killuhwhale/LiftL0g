@@ -158,20 +158,23 @@ export const clearCoachMemory = async (): Promise<void> => {
   } catch {}
 };
 
-// ── Legacy workout prompt builder ─────────────────────────────────────────────
+// ── Workout prompt builder ────────────────────────────────────────────────────
 
 /** Builds the prompt context string injected into AI workout generation */
 export const buildCoachPrompt = (profile: CoachProfile): string => {
   const lines = [
-    `You are my ${profile.coachType}.`,
-    `My fitness goals are: ${profile.goals.join(", ")}.`,
-    `My fitness background: ${profile.fitnessInfo}.`,
+    `Coach type: ${profile.coachType}`,
+    `Goals: ${profile.goals.join(", ")}`,
+    `Fitness background: ${profile.fitnessInfo}`,
   ];
   if (profile.excludedExercises?.length > 0) {
     lines.push(
-      `Do NOT include any of the following exercises: ${profile.excludedExercises.join(", ")}.`
+      `Excluded exercises (do NOT include these): ${profile.excludedExercises.join(", ")}`
     );
   }
-  lines.push(`Please generate my next workout tailored to my goals and background.`);
-  return lines.join(" ");
+  lines.push(
+    `Generate my next workout. Program it the way a real ${profile.coachType} would — ` +
+    `tailored to my goals, background, and any constraints above.`
+  );
+  return lines.join("\n");
 };

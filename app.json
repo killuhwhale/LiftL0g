@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.LiftL0g"
+      "bundleIdentifier": "com.killuhwhale.reptracker",
+      "infoPlist": {
+        "SKStoreKitTestingConfigurationFilename": "LiftL0g_IAP_testing"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +24,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.LiftL0g"
+      "package": "com.killuhwhale.reptracker"
     },
     "web": {
       "output": "static",

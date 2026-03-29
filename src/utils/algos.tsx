@@ -40,18 +40,20 @@ export const dateFormat = (dd: Date) => {
 };
 
 const workoutDateParts = (dd: string | Date) => {
-  if (typeof dd === "string") {
+  if (typeof dd === "string" && dd.length > 0) {
     const [year, month, day] = dd.split("T")[0].split("-").map(Number);
-    const utcDate = new Date(Date.UTC(year, month - 1, day));
-    return {
-      year,
-      monthIndex: month - 1,
-      day,
-      dayOfWeek: utcDate.getUTCDay(),
-    };
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      const utcDate = new Date(Date.UTC(year, month - 1, day));
+      return {
+        year,
+        monthIndex: month - 1,
+        day,
+        dayOfWeek: utcDate.getUTCDay(),
+      };
+    }
   }
 
-  const d = new Date(dd);
+  const d = dd instanceof Date && !isNaN(dd.getTime()) ? dd : new Date();
   return {
     year: d.getFullYear(),
     monthIndex: d.getMonth(),

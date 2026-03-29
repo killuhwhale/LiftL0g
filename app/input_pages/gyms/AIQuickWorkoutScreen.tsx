@@ -30,7 +30,6 @@ import {
   CalcWorkoutStats,
   Container,
   formatLongDate,
-  isDateInFuture,
   jList,
   limitTextLength,
   WorkoutGroupDescLimit,
@@ -135,12 +134,6 @@ const AIQuickWorkoutScreen: FunctionComponent = () => {
 
     if (!profileData?.user) {
       setAlertMsg("Could not load your profile. Please try again.");
-      setShowAlert(true);
-      return;
-    }
-
-    if (!isDateInFuture(profileData.user)) {
-      setAlertMsg("You need an active membership to use AI workout generation.");
       setShowAlert(true);
       return;
     }

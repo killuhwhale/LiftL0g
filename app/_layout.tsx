@@ -157,19 +157,13 @@ function AppNavigation({ showBackButton, setUserTheme }) {
     };
 
     auth.listenLogout(() => {
+      store.dispatch(apiSlice.util.resetApiState());
       setLoggedIn(false);
     });
 
     auth.listenLogin((isLogged, msg) => {
       if (isLogged) {
-        store.dispatch(
-          apiSlice.util.invalidateTags([
-            "Gyms", "UserGyms", "User", "UserAuth", "GymClasses",
-            "GymClassWorkoutGroups", "UserWorkoutGroups",
-            "WorkoutGroupWorkouts", "Coaches", "Members",
-            "GymFavs", "GymClassFavs",
-          ])
-        );
+        store.dispatch(apiSlice.util.resetApiState());
         setLoggedIn(true);
       }
     }, "logInKey");
@@ -233,7 +227,7 @@ export default function RootLayout() {
 
     // Configure RevenueCat — iOS only (Android publishing not active yet)
     if (Platform.OS === 'ios') {
-      Purchases.configure({ apiKey: 'test_abGTLhwVhbpVnhikyUaiEciPyBp' });
+      Purchases.configure({ apiKey: 'appl_dXZERsNrMEhdHDldBBrTvQvTBNe' });
       Purchases.setDebugLogsEnabled(__DEV__);
     }
   }, []);

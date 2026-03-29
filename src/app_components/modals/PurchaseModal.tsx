@@ -1,23 +1,40 @@
-import React, { FunctionComponent, useState } from "react";
-
+import React, {
+  FunctionComponent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  Linking,
-  Modal,
-  Pressable,
-  StyleProp,
-  TouchableOpacity,
-  View,
-  ViewStyle,
-  StyleSheet,
-  Platform,
   ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
 } from "react-native";
-
-import { LargeButton, RegularButton } from "../Buttons/buttons";
-import { TSButtonText, TSParagrapghText, TSSnippetText } from "../Text/Text";
-import { centeredViewStyle, modalViewStyle } from "./modalStyles";
+import {
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetModal,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import { useTheme } from "styled-components/native";
 import { PurchasesStoreProduct } from "react-native-purchases";
+import Icon from "react-native-vector-icons/Ionicons";
+import LinearGradient from "react-native-linear-gradient";
+import {
+  TSCaptionText,
+  TSInputTextSm,
+  TSSnippetText,
+} from "../Text/Text";
+import { lightenHexColor } from "../shared";
+
+const FEATURES = [
+  { icon: "close-circle-outline", label: "Ad-free experience" },
+  { icon: "barbell-outline", label: "Create up to 15 workouts/day" },
+  { icon: "document-text-outline", label: "World class workout plans" },
+  { icon: "sparkles-outline", label: "AI-powered workout generator" },
+];
 
 const PurchaseModal: FunctionComponent<{
   product: null | PurchasesStoreProduct;
@@ -26,268 +43,158 @@ const PurchaseModal: FunctionComponent<{
   makePurchase: (product: PurchasesStoreProduct | null) => Promise<void>;
 }> = ({ product, modalVisible, onRequestClose, makePurchase }) => {
   const theme = useTheme();
-
-  return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={modalVisible}
-      onRequestClose={() => onRequestClose()}
-    >
-      <View
-        style={[
-          {
-            backgroundColor: "#000000DD",
-            height: "100%",
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={[
-            {
-              height: "95%",
-              paddingTop: Platform.OS == "ios" ? 124 : 48,
-              paddingBottom: 124,
-            },
-          ]}
-          onPress={() => onRequestClose()}
-        >
-          <View
-            style={{
-              margin: 4,
-              borderRadius: 20,
-              padding: 12,
-              alignItems: "center",
-              shadowColor: "#000",
-              shadowOffset: {
-                width: 0,
-                height: 2,
-              },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-              elevation: 5,
-              backgroundColor: theme.palette.darkGray,
-              height: "100%",
-              width: "100%",
-            }}
-          >
-            <View
-              style={{
-                width: "100%",
-                height: "95%",
-                // paddingTop: 48,
-                justifyContent: "center",
-              }}
-            >
-              <PurchaseOptions
-                product={product}
-                websiteUrl="https://reptrackrr.com"
-                makePurchase={makePurchase}
-              />
-            </View>
-            <View style={{ marginTop: 124 }}>
-              <LargeButton
-                onPress={onRequestClose}
-                btnStyles={{
-                  backgroundColor: "#DB4437",
-                }}
-                text={"Close"}
-              />
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-    </Modal>
-  );
-};
-
-interface PurchaseOptionsProps {
-  /** The product object you fetched via your IAP library */
-  product: PurchasesStoreProduct | null;
-  /** URL to your Stripe-powered purchase page */
-  websiteUrl: string;
-  /** Called when user taps the in-app purchase button */
-  makePurchase: (product: PurchasesStoreProduct | null) => Promise<void>;
-}
-
-const PurchaseOptions: React.FC<PurchaseOptionsProps> = ({
-  product,
-  websiteUrl,
-  makePurchase,
-}) => {
-  const theme = useTheme();
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ["62%"], []);
   const [isWaiting, setIsWaiting] = useState(false);
-  return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: theme.palette.backgroundColor,
-          alignItems: "center",
-          borderRadius: 8,
-          width: "100%",
-        },
-      ]}
-    >
-      {/* 1. In-App Purchase Option */}
-      <TSSnippetText
-        textStyles={[styles.heading, { color: theme.palette.text }]}
-      >
-        Subscribe via App Store
-      </TSSnippetText>
-      <View style={[styles.card, { backgroundColor: theme.palette.AWE_Blue }]}>
-        <TSSnippetText
-          textStyles={[styles.title, { color: theme.palette.text }]}
-        >
-          {product?.title}
-        </TSSnippetText>
 
-        <TSSnippetText
-          textStyles={[styles.note, { color: theme.palette.text }]}
-        >
-          Manage Subscription with {Platform.OS == "ios" ? "Apple" : "Android"}{" "}
-          in the {Platform.OS == "ios" ? "App" : "Play"} Store.
-        </TSSnippetText>
+  React.useEffect(() => {
+    if (modalVisible) {
+      sheetRef.current?.present();
+    } else {
+      sheetRef.current?.dismiss();
+    }
+  }, [modalVisible]);
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            pressed && { opacity: 0.7 },
-            { backgroundColor: theme.palette.primary.main },
-          ]}
-          onPress={() => {
-            setIsWaiting(true);
-            makePurchase(product).finally(() => setIsWaiting(false));
-          }}
-          accessibilityRole="button"
-        >
-          <View style={{ flexDirection: "row" }}>
-            {isWaiting ? (
-              <ActivityIndicator color={theme.palette.AWE_Green} style={{}} />
-            ) : (
-              <></>
-            )}
-            <TSSnippetText
-              textStyles={[
-                styles.buttonText,
-                { color: theme.palette.AWE_Green },
-              ]}
-            >
-              Subscribe {product?.priceString}
-            </TSSnippetText>
-            {isWaiting ? (
-              <ActivityIndicator color={theme.palette.AWE_Green} style={{}} />
-            ) : (
-              <></>
-            )}
-          </View>
-        </Pressable>
-      </View>
-
-      <View
-        style={{
-          // borderWidth: 1,
-          // height: 1,
-          // borderColor: theme.palette.text,
-          marginVertical: 16,
-        }}
+  const renderBackdrop = useCallback(
+    (backdropProps: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...backdropProps}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.6}
+        pressBehavior="close"
       />
+    ),
+    []
+  );
 
-      {/* 2. External Site Option */}
-      {/* <TSSnippetText
-        textStyles={[styles.heading, { color: theme.palette.text }]}
-      >
-        Subscribe via Website
-      </TSSnippetText>
-      <View style={[styles.card, { backgroundColor: theme.palette.AWE_Blue }]}>
-        <TSSnippetText
-          textStyles={[styles.note, { color: theme.palette.text }]}
-        >
-          Manage Subscription on our website
-        </TSSnippetText>
-        <TSSnippetText
-          textStyles={[styles.note, { color: theme.palette.text }]}
-        >
-          Checkout with Stripe
-        </TSSnippetText>
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            pressed && { opacity: 0.7 },
-            { backgroundColor: theme.palette.primary.main },
-          ]}
-          onPress={() => Linking.openURL(websiteUrl)}
-          accessibilityRole="button"
-        >
-          <TSSnippetText
-            textStyles={[styles.buttonText, { color: theme.palette.AWE_Green }]}
+  const storeName = Platform.OS === "ios" ? "App Store" : "Play Store";
+  const priceString = product?.priceString ?? "";
+
+  const handleSubscribe = () => {
+    setIsWaiting(true);
+    makePurchase(product).finally(() => {
+      setIsWaiting(false);
+      onRequestClose();
+    });
+  };
+
+  return (
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      onDismiss={onRequestClose}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{ backgroundColor: theme.palette.darkGray }}
+      handleIndicatorStyle={{
+        backgroundColor: lightenHexColor(theme.palette.lightGray, 0.3),
+        width: 40,
+      }}
+    >
+      <BottomSheetView style={styles.container}>
+        {/* Header */}
+        <View style={styles.headerSection}>
+          <LinearGradient
+            colors={[theme.palette.primary.main, theme.palette.AWE_Green]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.iconGradient}
           >
-            Go to Website
-          </TSSnippetText>
+            <Icon name="star" size={28} color="#FFF" />
+          </LinearGradient>
+
+          <TSInputTextSm textStyles={{ color: theme.palette.text, fontWeight: "700", fontSize: 20, marginTop: 12 }}>
+            Go Premium
+          </TSInputTextSm>
+
+          {priceString ? (
+            <TSCaptionText textStyles={{ color: theme.palette.gray, marginTop: 4 }}>
+              {priceString}/month
+            </TSCaptionText>
+          ) : null}
+        </View>
+
+        {/* Features */}
+        <View style={styles.featuresSection}>
+          {FEATURES.map((f) => (
+            <View key={f.label} style={styles.featureRow}>
+              <View style={[styles.featureIconCircle, { backgroundColor: lightenHexColor(theme.palette.AWE_Green, 0.15) }]}>
+                <Icon name={f.icon} size={18} color={theme.palette.AWE_Green} />
+              </View>
+              <TSSnippetText textStyles={{ color: theme.palette.text, flex: 1 }}>
+                {f.label}
+              </TSSnippetText>
+            </View>
+          ))}
+        </View>
+
+        {/* Subscribe button */}
+        <Pressable
+          onPress={handleSubscribe}
+          disabled={isWaiting || !product}
+          style={({ pressed }) => [
+            styles.subscribeButton,
+            { backgroundColor: theme.palette.AWE_Green, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          {isWaiting ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <TSInputTextSm textStyles={{ color: "#FFF", fontWeight: "700", fontSize: 16, textAlign: "center" }}>
+              Subscribe {priceString ? `for ${priceString}/mo` : ""}
+            </TSInputTextSm>
+          )}
         </Pressable>
-      </View> */}
-    </View>
+
+        {/* Fine print */}
+        <TSCaptionText textStyles={{ color: theme.palette.gray, textAlign: "center", marginTop: 10, fontSize: 11 }}>
+          Cancel anytime in the {storeName}
+        </TSCaptionText>
+      </BottomSheetView>
+    </BottomSheetModal>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 8,
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 32,
   },
-  heading: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  card: {
-    padding: 16,
-    borderRadius: 12,
-    // If you want a subtle shadow:
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  price: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  note: {
-    fontSize: 13,
-    fontStyle: "italic",
-    marginBottom: 16,
-  },
-  button: {
-    paddingVertical: 12,
-    borderRadius: 8,
+  headerSection: {
     alignItems: "center",
+    marginBottom: 20,
   },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  buttonOutline: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1.5,
+  iconGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: "center",
-    marginTop: 12,
+    justifyContent: "center",
   },
-  buttonOutlineText: {
-    fontSize: 16,
-    fontWeight: "600",
+  featuresSection: {
+    gap: 14,
+    marginBottom: 24,
+  },
+  featureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  featureIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  subscribeButton: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

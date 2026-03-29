@@ -56,6 +56,10 @@ interface TemplateMeta {
   description: string;
 }
 
+// GZCLP (beginner) and Wendler 5/3/1 (classic) are available to free users.
+// All other templates require a membership.
+const FREE_TEMPLATE_NAMES = new Set([TEMPLATE_NAMES[0], TEMPLATE_NAMES[3]]);
+
 const TEMPLATE_META: Record<string, TemplateMeta> = {
   [TEMPLATE_NAMES[0]]: {
     displayName: "Wendler 5/3/1",
@@ -122,6 +126,39 @@ const TEMPLATE_META: Record<string, TemplateMeta> = {
   },
 };
 
+// ─── Tier Badge ───────────────────────────────────────────────────────────────
+
+function TierBadge({ isFree, compact = false }: { isFree: boolean; compact?: boolean }) {
+  const theme = useTheme();
+  const color = isFree ? theme.palette.AWE_Green : theme.palette.AWE_Yellow;
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        alignSelf: "flex-start",
+        backgroundColor: `${color}22`,
+        borderRadius: 6,
+        paddingHorizontal: compact ? 5 : 7,
+        paddingVertical: 2,
+        borderWidth: 1,
+        borderColor: `${color}55`,
+      }}
+    >
+      <Icon
+        name={isFree ? "lock-open-outline" : "star-outline"}
+        color={color}
+        style={{ fontSize: compact ? 9 : 11, marginRight: 3 }}
+      />
+      <TSCaptionText
+        textStyles={{ fontSize: compact ? 8 : 10, color, fontWeight: "700" }}
+      >
+        {isFree ? "FREE" : "PRO"}
+      </TSCaptionText>
+    </View>
+  );
+}
+
 // ─── Template Card ────────────────────────────────────────────────────────────
 
 function TemplateCard({
@@ -175,11 +212,15 @@ function TemplateCard({
         textStyles={{
           color: theme.palette.lightGray,
           fontSize: 11,
-          marginBottom: 10,
+          marginBottom: 6,
         }}
       >
         {meta.tagline}
       </TSCaptionText>
+
+      <View style={{ marginBottom: 10 }}>
+        <TierBadge isFree={FREE_TEMPLATE_NAMES.has(name)} compact />
+      </View>
 
       {/* Tag chips */}
       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
@@ -251,10 +292,11 @@ function TemplateDetailCard({ name }: { name: string }) {
               {meta.displayName}
             </TSButtonText>
             <TSCaptionText
-              textStyles={{ color: theme.palette.lightGray, fontSize: 12 }}
+              textStyles={{ color: theme.palette.lightGray, fontSize: 12, marginBottom: 6 }}
             >
               {meta.tagline}
             </TSCaptionText>
+            <TierBadge isFree={FREE_TEMPLATE_NAMES.has(name)} />
           </View>
           <View
             style={{
@@ -407,7 +449,7 @@ function MembershipGate({ onNav }: { onNav: () => void }) {
         />
       </View>
       <TSButtonText textStyles={{ marginBottom: 6, textAlign: "center" }}>
-        Membership Required
+        PRO Template
       </TSButtonText>
       <TSCaptionText
         textStyles={{
@@ -417,7 +459,7 @@ function MembershipGate({ onNav }: { onNav: () => void }) {
           lineHeight: 18,
         }}
       >
-        Templates are a member-only feature. Upgrade to unlock all programs.
+        This is a premium template. Upgrade to unlock all PRO programs.
       </TSCaptionText>
       <TouchableOpacity
         onPress={onNav}
@@ -479,7 +521,8 @@ export default function TemplateWorkoutsScreen() {
   };
 
   const handleGenerate = async () => {
-    if (!profileData?.user || !isDateInFuture(profileData.user)) {
+    const isFreeTemplate = selected != null && FREE_TEMPLATE_NAMES.has(selected);
+    if (!isFreeTemplate && (!profileData?.user || !isDateInFuture(profileData.user))) {
       setShowNeedMembership(true);
       return;
     }

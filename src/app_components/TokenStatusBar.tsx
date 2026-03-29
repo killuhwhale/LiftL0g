@@ -14,7 +14,7 @@ const TokenStatusBar: FunctionComponent<Props> = ({ userId }) => {
   const theme = useTheme();
   const { data, isLoading } = useGetTokenStatusQuery(userId, { skip: !userId });
 
-  if (isLoading || !data) return null;
+  if (!userId || isLoading || !data) return null;
 
   const remaining        = data.remaining_tokens ?? 0;
   const used             = data.total_tokens_used ?? 0;

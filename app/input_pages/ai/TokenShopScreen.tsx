@@ -1,4 +1,4 @@
-import React, { FunctionComponent, useEffect, useState } from "react";
+import React, { FunctionComponent, useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,9 +8,9 @@ import {
   View,
 } from "react-native";
 import { useTheme } from "styled-components/native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import Icon from "react-native-vector-icons/Ionicons";
-import Purchases, { PurchasesStoreProduct } from "react-native-purchases";
+import Purchases, { PurchasesPackage } from "react-native-purchases";
 import {
   TSCaptionText,
   TSInputTextSm,
@@ -20,7 +20,6 @@ import {
 } from "@/src/app_components/Text/Text";
 import {
   useGetTokenStatusQuery,
-  usePurchaseTokensMutation,
 } from "@/src/redux/api/apiSlice";
 import { Container } from "@/src/app_components/shared";
 import styled from "styled-components/native";
@@ -57,17 +56,19 @@ const TokenShopScreen: FunctionComponent = () => {
     skip: !userId,
     refetchOnMountOrArgChange: true,
   });
-  const [purchaseTokens, { isLoading: isPurchasing }] = usePurchaseTokensMutation();
-  const [purchasingId, setPurchasingId]               = useState<string | null>(null);
-  const [rcProducts, setRcProducts]                   = useState<PurchasesStoreProduct[]>([]);
 
-  // Load RevenueCat products from the ai_credits offering
+  // Refetch fresh data every time the screen comes into focus
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+  const [purchasingId, setPurchasingId]               = useState<string | null>(null);
+  const [isPurchasing, setIsPurchasing]               = useState(false);
+  const [rcPackages, setRcPackages]                   = useState<PurchasesPackage[]>([]);
+
+  // Load RevenueCat packages from the ai_credits offering
   useEffect(() => {
     Purchases.getOfferings()
       .then((offerings) => {
-        const offering = offerings.all[RC_CREDITS_OFFERING];
-        const products = offering?.availablePackages.map((p) => p.product) ?? [];
-        setRcProducts(products);
+        const offering = offerings.all[RC_CREDITS_OFFERING] ?? offerings.current;
+        setRcPackages(offering?.availablePackages ?? []);
       })
       .catch((e) => console.warn("[TokenShop] getOfferings failed:", e));
   }, []);
@@ -75,14 +76,17 @@ const TokenShopScreen: FunctionComponent = () => {
   const nativeProductId = (pkg: Package) =>
     Platform.OS === "ios" ? pkg.apple_product_id : pkg.google_product_id;
 
-  const getRcProduct = (pkg: Package) =>
-    rcProducts.find((p) => p.productIdentifier === nativeProductId(pkg));
+  const getRcPackage = (pkg: Package) => {
+    const id = nativeProductId(pkg);
+    return rcPackages.find(
+      (p) => p.product.productIdentifier === id || (p.product as any).identifier === id
+    );
+  };
 
   const handlePurchase = async (pkg: Package) => {
-    const rcProduct = getRcProduct(pkg);
+    const rcPackage = getRcPackage(pkg);
 
-    if (!rcProduct) {
-      // Fallback: show info that products are not yet configured
+    if (!rcPackage) {
       Alert.alert(
         "Not Available",
         "This pack isn't available for purchase yet. Please check back soon.",
@@ -92,37 +96,29 @@ const TokenShopScreen: FunctionComponent = () => {
 
     const pkgNativeId = nativeProductId(pkg);
     setPurchasingId(pkgNativeId);
+    setIsPurchasing(true);
     try {
-      const { customerInfo, transaction } =
-        await Purchases.purchaseStoreProduct(rcProduct);
+      await Purchases.purchasePackage(rcPackage);
 
-      // Credit tokens on our backend. If the RevenueCat webhook arrives first
-      // the duplicate check will skip the double-credit gracefully.
-      const transactionId =
-        (transaction as any)?.transactionIdentifier ??
-        (transaction as any)?.orderId ??
-        "";
-
-      await purchaseTokens({
-        package_id:      pkgNativeId,  // store-native ID — matches TOKEN_PACKAGES_MAP
-        method:          Platform.OS === "ios" ? "apple" : "google",
-        transaction_ref: transactionId,
-        user_id:         userId,
-      }).unwrap();
-
-      await refetch();
+      // Wait for the RevenueCat webhook to credit tokens on our backend,
+      // then refresh the UI.
+      setTimeout(async () => {
+        await refetch();
+        setIsPurchasing(false);
+        setPurchasingId(null);
+      }, 5000);
 
       Alert.alert(
         "Credits Added!",
         `${pkg.credits} AI Credits added to your account.`,
       );
     } catch (e: any) {
+      setIsPurchasing(false);
+      setPurchasingId(null);
       // User cancelled — don't show an error
       if (e?.userCancelled) return;
       console.warn("[TokenShop] purchase error:", e);
       Alert.alert("Purchase Failed", e?.message ?? "Something went wrong. Please try again.");
-    } finally {
-      setPurchasingId(null);
     }
   };
 
@@ -208,12 +204,12 @@ const TokenShopScreen: FunctionComponent = () => {
 
         {packages.map((pkg: Package, i: number) => {
           const isThisPurchasing = isPurchasing && purchasingId === nativeProductId(pkg);
+          const rcPackage        = getRcPackage(pkg);
           const isPopular        = i === 1;
           const isPro            = i === packages.length - 1 && i > 0;
           const savings          = savingsPct(pkg);
-          const rcProduct        = getRcProduct(pkg);
           // Show store price if available, otherwise fall back to our price
-          const displayPrice     = rcProduct?.priceString ?? `$${pkg.price_usd.toFixed(2)}`;
+          const displayPrice     = rcPackage?.product.priceString ?? (rcPackage?.product as any)?.currentPrice?.formattedPrice ?? `$${pkg.price_usd.toFixed(2)}`;
           const perCredit        = (pkg.price_usd / pkg.credits).toFixed(2);
 
           return (
