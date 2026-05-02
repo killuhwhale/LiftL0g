@@ -18,6 +18,7 @@ interface GradientTextProps {
 
 const GradientText: FunctionComponent<GradientTextProps> = (props) => {
   const theme = useTheme();
+  const renderBuffer = 8;
   const [size, setSize] = useState<{ width: number; height: number } | null>(
     null
   );
@@ -50,7 +51,7 @@ const GradientText: FunctionComponent<GradientTextProps> = (props) => {
       {/* SVG paints gradient text over the measured space */}
       {size && (
         <Svg
-          width={size.width}
+          width={size.width + renderBuffer}
           height={size.height}
           style={StyleSheet.absoluteFill}
         >

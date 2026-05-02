@@ -17,6 +17,7 @@ import SignInComp from "./Auth/SignIn";
 import RegisterComp from "./Auth/Register";
 import ResetPasswordAuthPage from "./Auth/ResetPasswordAuthPage";
 import CodeResetPasswordPage from "./Auth/CodeResetPassword";
+import AlertModal from "@/src/app_components/modals/AlertModal";
 import {
   TSCaptionText,
   TSTitleText,
@@ -40,9 +41,7 @@ const ModeTab: FunctionComponent<{
         alignItems: "center",
         paddingVertical: 8,
         borderRadius: 10,
-        backgroundColor: active
-          ? theme.palette.AWE_Green
-          : "transparent",
+        backgroundColor: active ? theme.palette.AWE_Green : "transparent",
         opacity: pressed ? 0.75 : 1,
       })}
     >
@@ -83,6 +82,7 @@ const AuthScreen: FunctionComponent = () => {
   const [hideNewPassword, setHideNewPassword] = useState(true);
   const [mismatchPasswordText, setMismatchPasswordText] = useState("");
   const [registerError, setRegisterError] = useState("");
+  const [showVerifyEmailAlert, setShowVerifyEmailAlert] = useState(false);
 
   const [resetEmail, setResetEmail] = useState("");
   const [resetCode, setResetCode] = useState("");
@@ -155,7 +155,7 @@ const AuthScreen: FunctionComponent = () => {
     try {
       const res = await auth.register(data);
       if (res?.id > 0) {
-        setAuthMode(0);
+        setShowVerifyEmailAlert(true);
       } else if (res?.email === "Email taken") {
         setRegisterError("Email already in use.");
       }
@@ -166,7 +166,7 @@ const AuthScreen: FunctionComponent = () => {
 
   const changePassword = async () => {
     if (resetPasswordError.length > 0) setResetPasswordError("");
-    const res = await post(`${BASEURL}user/reset_password/`, {
+    const res = await post(`${BASEURL}/user/reset_password/`, {
       email: resetEmail,
       reset_code: resetCode,
       new_password: resetPassword,
@@ -183,8 +183,7 @@ const AuthScreen: FunctionComponent = () => {
 
   const isSecondaryMode = authMode === 2 || authMode === 3;
 
-  const secondaryTitle =
-    authMode === 2 ? "Forgot Password" : "Reset Password";
+  const secondaryTitle = authMode === 2 ? "Forgot Password" : "Reset Password";
   const secondarySubtitle =
     authMode === 2
       ? "Enter your email to receive a reset code"
@@ -280,7 +279,10 @@ const AuthScreen: FunctionComponent = () => {
               <View
                 style={{
                   flexDirection: "row",
-                  backgroundColor: lightenHexColor(theme.palette.lightGray, 0.06),
+                  backgroundColor: lightenHexColor(
+                    theme.palette.lightGray,
+                    0.06,
+                  ),
                   borderRadius: 12,
                   padding: 3,
                   marginBottom: 24,
@@ -358,6 +360,16 @@ const AuthScreen: FunctionComponent = () => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AlertModal
+        modalVisible={showVerifyEmailAlert}
+        onRequestClose={() => {
+          setShowVerifyEmailAlert(false);
+          setAuthMode(0);
+        }}
+        closeText="Got it"
+        bodyText="Account created! Check your email to verify your account before signing in."
+      />
     </SafeAreaView>
   );
 };

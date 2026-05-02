@@ -80,50 +80,73 @@ const CoachChatHistoryScreen: FunctionComponent = () => {
     );
   };
 
-  const renderSession = ({ item }: { item: ChatSession }) => (
-    <TouchableOpacity
-      onPress={() => handleOpenSession(item)}
-      onLongPress={() => handleDelete(item)}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.palette.darkGray,
-      }}
-    >
-      <View
+  const renderSession = ({ item }: { item: ChatSession }) => {
+    const title = item.title?.trim() || "New chat";
+    const countText =
+      item.message_count && item.message_count > 0
+        ? `${item.message_count} ${item.message_count === 1 ? "message" : "messages"}`
+        : null;
+    const subtitle = [item.coach_type, countText].filter(Boolean).join(" · ");
+
+    return (
+      <TouchableOpacity
+        onPress={() => handleOpenSession(item)}
+        onLongPress={() => handleDelete(item)}
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: `${theme.palette.AWE_Green}33`,
+          flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
-          marginRight: 12,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.palette.darkGray,
+          width: "100%",
         }}
       >
-        <Icon name="chatbubble-outline" size={18} color={theme.palette.AWE_Green} />
-      </View>
-
-      <View style={{ flex: 1 }}>
-        <TSInputTextSm
-          textStyles={{ color: theme.palette.text, fontWeight: "600" }}
-          numberOfLines={1}
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: `${theme.palette.AWE_Green}33`,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 12,
+          }}
         >
-          {item.title}
-        </TSInputTextSm>
-        <TSCaptionText textStyles={{ color: theme.palette.gray, marginTop: 2 }}>
-          {item.coach_type}
-        </TSCaptionText>
-      </View>
+          <Icon name="chatbubble-outline" size={18} color={theme.palette.AWE_Green} />
+        </View>
 
-      <TSCaptionText textStyles={{ color: theme.palette.gray }}>
-        {formatDate(item.updated_at)}
-      </TSCaptionText>
-    </TouchableOpacity>
-  );
+        <View style={{ flex: 1, marginRight: 8, minWidth: 0 }}>
+          <TSInputTextSm
+            textStyles={{ color: theme.palette.text, fontWeight: "600" }}
+            numberOfLines={1}
+          >
+            {title}
+          </TSInputTextSm>
+          {item.last_message_preview ? (
+            <TSCaptionText
+              textStyles={{ color: theme.palette.gray, marginTop: 2 }}
+              numberOfLines={1}
+            >
+              {item.last_message_preview}
+            </TSCaptionText>
+          ) : null}
+          {subtitle ? (
+            <TSCaptionText
+              textStyles={{ color: theme.palette.gray, marginTop: 2 }}
+              numberOfLines={1}
+            >
+              {subtitle}
+            </TSCaptionText>
+          ) : null}
+        </View>
+
+        <TSCaptionText textStyles={{ color: theme.palette.gray }}>
+          {formatDate(item.updated_at)}
+        </TSCaptionText>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <PageContainer>
@@ -137,6 +160,8 @@ const CoachChatHistoryScreen: FunctionComponent = () => {
           paddingBottom: 12,
           borderBottomWidth: 1,
           borderBottomColor: theme.palette.darkGray,
+          alignSelf: "stretch",
+          width: "100%",
         }}
       >
         <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
@@ -167,6 +192,8 @@ const CoachChatHistoryScreen: FunctionComponent = () => {
         data={sessions}
         keyExtractor={(item) => item.id}
         renderItem={renderSession}
+        style={{ alignSelf: "stretch", width: "100%" }}
+        contentContainerStyle={{ flexGrow: 1 }}
         ListEmptyComponent={
           <View
             style={{

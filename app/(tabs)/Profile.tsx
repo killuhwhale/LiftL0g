@@ -5,13 +5,13 @@ import {
   isDateInFuture,
   lightenHexColor,
   mdFontSize,
-  SCREEN_WIDTH
+  SCREEN_WIDTH,
 } from "@/src/app_components/shared";
 import {
   TSCaptionText,
   TSInputText,
   TSParagrapghText,
-  TSSnippetText
+  TSSnippetText,
 } from "@/src/app_components/Text/Text";
 import React, {
   FunctionComponent,
@@ -26,7 +26,7 @@ import styled from "styled-components/native";
 import {
   apiSlice,
   useGetProfileViewQuery,
-  useUpdateUsernameMutation
+  useUpdateUsernameMutation,
 } from "@/src/redux/api/apiSlice";
 import { useTheme } from "styled-components/native";
 
@@ -40,7 +40,7 @@ import {
   StyleSheet,
   TouchableHighlight,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 import champs from "@/assets/images/champs_logo.png";
@@ -54,15 +54,13 @@ import Input from "@/src/app_components/Input/input";
 import ActionCancelModal from "@/src/app_components/modals/ActionCancelModal";
 import PurchaseModal from "@/src/app_components/modals/PurchaseModal";
 import { debounce, dateFormatDayOfWeek } from "@/src/utils/algos";
-import { DOMAIN_NAME, TestIDs } from "@/src/utils/constants";
+import { BASEURL_FRONTEND, TestIDs } from "@/src/utils/constants";
 
 import BannerAddMembership from "@/src/app_components/ads/BannerAd";
 import { store } from "@/src/redux/store";
 import AuthManager from "@/src/utils/auth";
 import LinearGradient from "react-native-linear-gradient";
-import Purchases, {
-  PurchasesStoreProduct
-} from "react-native-purchases";
+import Purchases, { PurchasesStoreProduct } from "react-native-purchases";
 import { UserProps } from "../types";
 
 const PageContainer = styled(Container)`
@@ -129,9 +127,7 @@ const SettingsRow: FunctionComponent<SettingsRowProps> = ({
     >
       <View style={settingsRowStyle.row}>
         <Icon name={icon} color={color} style={settingsRowStyle.icon} />
-        <TSSnippetText
-          textStyles={[settingsRowStyle.label, { color }]}
-        >
+        <TSSnippetText textStyles={[settingsRowStyle.label, { color }]}>
           {title}
         </TSSnippetText>
         {rightContent ?? (
@@ -281,7 +277,9 @@ const UserInfoPanel: FunctionComponent<UserInfoPanelProps> = (props) => {
         style={{ padding: 6, marginLeft: 6 }}
       >
         <Icon
-          name={showEditusername ? "checkmark-circle-outline" : "pencil-outline"}
+          name={
+            showEditusername ? "checkmark-circle-outline" : "pencil-outline"
+          }
           color={theme.palette.gray}
           style={{ fontSize: 18 }}
         />
@@ -312,7 +310,11 @@ const PremiumMemberCard: FunctionComponent<{
             Premium Member
           </TSCaptionText>
           <TouchableOpacity onPress={onRefresh} style={{ marginLeft: "auto" }}>
-            <Icon name="refresh-outline" color="#FFF" style={{ fontSize: 20 }} />
+            <Icon
+              name="refresh-outline"
+              color="#FFF"
+              style={{ fontSize: 20 }}
+            />
           </TouchableOpacity>
         </View>
 
@@ -328,17 +330,14 @@ const PremiumMemberCard: FunctionComponent<{
                   {perk}
                 </TSSnippetText>
               </View>
-            )
+            ),
           )}
         </View>
       </LinearGradient>
 
       <Animated.Image
         source={champs}
-        style={[
-          premiumCardStyle.champsImage,
-          { opacity: fadeAnim },
-        ]}
+        style={[premiumCardStyle.champsImage, { opacity: fadeAnim }]}
       />
     </View>
   );
@@ -441,16 +440,17 @@ const Profile: FunctionComponent = () => {
       const setup = async () => {
         try {
           if (Platform.OS == "ios") {
-            // RC is configured once at app startup in _layout.tsx
-            await Purchases.setAttributes({
-              userID: data?.user.id.toString(),
-            });
+            // RC logIn + setAttributes handled in _layout.tsx on profile load
             await Purchases.syncAttributesAndOfferingsIfNeeded();
 
             const offerings = await Purchases.getOfferings();
             const subOffering = offerings.all["monthly_membership_offering"];
-            const products = subOffering?.availablePackages.map((p) => p.product) ?? [];
-            console.log("Got subscription products from RC offering: ", products);
+            const products =
+              subOffering?.availablePackages.map((p) => p.product) ?? [];
+            console.log(
+              "Got subscription products from RC offering: ",
+              products,
+            );
             loadedProductsRef.current = true;
             setCurProducts(products);
           } else if (Platform.OS == "android") {
@@ -505,8 +505,19 @@ const Profile: FunctionComponent = () => {
     }
     return (
       <PageContainer>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
-          <Icon name="warning-outline" color={theme.palette.AWE_Red} style={{ fontSize: 40, marginBottom: 12 }} />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+          }}
+        >
+          <Icon
+            name="warning-outline"
+            color={theme.palette.AWE_Red}
+            style={{ fontSize: 40, marginBottom: 12 }}
+          />
           <TSCaptionText textStyles={{ textAlign: "center", marginBottom: 16 }}>
             {errorMessage || "Something went wrong"}
           </TSCaptionText>
@@ -516,7 +527,11 @@ const Profile: FunctionComponent = () => {
             onPress={() => setShowConfirmLogout(true)}
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Icon name="log-out" color={theme.palette.AWE_Red} style={{ fontSize: 22, marginRight: 8 }} />
+              <Icon
+                name="log-out"
+                color={theme.palette.AWE_Red}
+                style={{ fontSize: 22, marginRight: 8 }}
+              />
               <TSSnippetText textStyles={{ color: theme.palette.AWE_Red }}>
                 Logout
               </TSSnippetText>
@@ -540,7 +555,9 @@ const Profile: FunctionComponent = () => {
   if (isLoading) {
     return (
       <PageContainer>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
           <ActivityIndicator size="small" color={theme.palette.text} />
         </View>
       </PageContainer>
@@ -574,7 +591,11 @@ const Profile: FunctionComponent = () => {
           <View
             style={[
               profileStyles.avatarCircle,
-              { backgroundColor: isMember ? theme.palette.AWE_Green : theme.palette.darkGray },
+              {
+                backgroundColor: isMember
+                  ? theme.palette.AWE_Green
+                  : theme.palette.darkGray,
+              },
             ]}
           >
             <TSParagrapghText textStyles={profileStyles.avatarInitial}>
@@ -642,7 +663,11 @@ const Profile: FunctionComponent = () => {
         <View
           style={[
             profileStyles.sectionCard,
-            { backgroundColor: theme.palette.darkGray, marginHorizontal: 16, borderRadius: 12 },
+            {
+              backgroundColor: theme.palette.darkGray,
+              marginHorizontal: 16,
+              borderRadius: 12,
+            },
           ]}
         >
           {/* Email display (non-tappable) */}
@@ -652,7 +677,9 @@ const Profile: FunctionComponent = () => {
               color={theme.palette.gray}
               style={settingsRowStyle.icon}
             />
-            <TSSnippetText textStyles={{ color: theme.palette.gray, flex: 1, marginLeft: 8 }}>
+            <TSSnippetText
+              textStyles={{ color: theme.palette.gray, flex: 1, marginLeft: 8 }}
+            >
               {data.user.email}
             </TSSnippetText>
           </View>
@@ -661,7 +688,12 @@ const Profile: FunctionComponent = () => {
           <SettingsRow
             icon="trophy-outline"
             title="Workout Item Maxes"
-            onPress={() => router.push({ pathname: "/WorkoutItemMaxes", params: { userID: data.user.id } })}
+            onPress={() =>
+              router.push({
+                pathname: "/WorkoutItemMaxes",
+                params: { userID: data.user.id },
+              })
+            }
           />
           <Divider />
 
@@ -682,7 +714,9 @@ const Profile: FunctionComponent = () => {
             icon="key-outline"
             title="Change Password"
             testID={TestIDs.ResetPasswordScreenBtn.name()}
-            onPress={() => router.push({ pathname: "/input_pages/users/ResetPassword" })}
+            onPress={() =>
+              router.push({ pathname: "/input_pages/users/ResetPassword" })
+            }
           />
           <Divider />
 
@@ -692,7 +726,10 @@ const Profile: FunctionComponent = () => {
             onPress={refreshStatus}
             rightContent={
               isRefreshing ? (
-                <ActivityIndicator size="small" color={theme.palette.AWE_Green} />
+                <ActivityIndicator
+                  size="small"
+                  color={theme.palette.AWE_Green}
+                />
               ) : (
                 <Icon
                   name="refresh-outline"
@@ -709,7 +746,11 @@ const Profile: FunctionComponent = () => {
         <View
           style={[
             profileStyles.sectionCard,
-            { backgroundColor: theme.palette.darkGray, marginHorizontal: 16, borderRadius: 12 },
+            {
+              backgroundColor: theme.palette.darkGray,
+              marginHorizontal: 16,
+              borderRadius: 12,
+            },
           ]}
         >
           <SettingsRow
@@ -718,7 +759,7 @@ const Profile: FunctionComponent = () => {
             external
             onPress={() =>
               Linking.openURL(
-                "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+                "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
               )
             }
           />
@@ -730,7 +771,7 @@ const Profile: FunctionComponent = () => {
             external
             onPress={() =>
               Linking.openURL(
-                "https://gist.github.com/killuhwhale/1613abbf3258807a5bc78e5fc5e569fb"
+                "https://gist.github.com/killuhwhale/1613abbf3258807a5bc78e5fc5e569fb",
               )
             }
           />
@@ -741,7 +782,7 @@ const Profile: FunctionComponent = () => {
             title="Remove Account"
             danger
             external
-            onPress={() => Linking.openURL(`https://${DOMAIN_NAME}/removeAccount`)}
+            onPress={() => Linking.openURL(`${BASEURL_FRONTEND}/removeAccount`)}
           />
         </View>
 
@@ -755,9 +796,21 @@ const Profile: FunctionComponent = () => {
             ]}
             onPress={() => setShowConfirmLogout(true)}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="log-out-outline" color={theme.palette.AWE_Red} style={{ fontSize: 20, marginRight: 8 }} />
-              <TSSnippetText textStyles={{ color: theme.palette.AWE_Red, fontSize: 15 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon
+                name="log-out-outline"
+                color={theme.palette.AWE_Red}
+                style={{ fontSize: 20, marginRight: 8 }}
+              />
+              <TSSnippetText
+                textStyles={{ color: theme.palette.AWE_Red, fontSize: 15 }}
+              >
                 Logout
               </TSSnippetText>
             </View>
@@ -984,12 +1037,15 @@ const FavGymsPanel: FunctionComponent<FavGymsPanelProps> = (props) => {
 };
 
 const FavGymClassesPanel: FunctionComponent<FavGymClassesPanelProps> = (
-  props
+  props,
 ) => {
   const theme = useTheme();
   const router = useRouter();
   const goToGymClass = (gymClass: GymClassCardProps) => {
-    router.push({ pathname: "/GymClassScreen", params: { ...gymClass, private: String(gymClass.private) } });
+    router.push({
+      pathname: "/GymClassScreen",
+      params: { ...gymClass, private: String(gymClass.private) },
+    });
   };
 
   return (
@@ -1014,7 +1070,7 @@ const FavGymClassesPanel: FunctionComponent<FavGymClassesPanelProps> = (
               activeOpacity={0.9}
               onPress={() =>
                 goToGymClass(
-                  favGymClass.gym_class as unknown as GymClassCardProps
+                  favGymClass.gym_class as unknown as GymClassCardProps,
                 )
               }
             >
@@ -1081,20 +1137,30 @@ function SubscriptionOffer({ products, makePurchase }: IAPSub) {
           </TSCaptionText>
 
           <View style={offerStyles.pillsRow}>
-            {["Ad-free", "15 workouts/day", "AI Generator", "Workout Plans"].map(
-              (perk) => (
-                <View key={perk} style={offerStyles.pill}>
-                  <TSSnippetText textStyles={offerStyles.pillText}>
-                    {perk}
-                  </TSSnippetText>
-                </View>
-              )
-            )}
+            {[
+              "Ad-free",
+              "15 workouts/day",
+              "AI Generator",
+              "Workout Plans",
+            ].map((perk) => (
+              <View key={perk} style={offerStyles.pill}>
+                <TSSnippetText textStyles={offerStyles.pillText}>
+                  {perk}
+                </TSSnippetText>
+              </View>
+            ))}
           </View>
 
-          <View style={[offerStyles.ctaRow, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+          <View
+            style={[
+              offerStyles.ctaRow,
+              { backgroundColor: "rgba(255,255,255,0.2)" },
+            ]}
+          >
             <TSSnippetText textStyles={offerStyles.ctaText}>
-              {product?.priceString ? `Starting at ${product.priceString}/mo` : "View Plans"}
+              {product?.priceString
+                ? `Starting at ${product.priceString}/mo`
+                : "View Plans"}
             </TSSnippetText>
             <Icon name="chevron-forward" size={16} color="#FFF" />
           </View>

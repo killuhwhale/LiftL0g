@@ -22,8 +22,10 @@ import { store } from "../src/redux/store";
 import auth from "../src/utils/auth";
 import { BASEURL } from "../src/utils/constants";
 
-import mobileAds from 'react-native-google-mobile-ads';
-import Purchases from 'react-native-purchases';
+import mobileAds from "react-native-google-mobile-ads";
+import Purchases from "react-native-purchases";
+import { setCoachStorageUser } from "@/src/utils/coachStorage";
+import { setChatDBUser } from "@/src/utils/chatDB";
 
 const primaryColor = twrnc.color("bg-blue-600");
 // const secondaryColor = twrnc.color('bg-emerald-900');
@@ -146,6 +148,19 @@ function AppNavigation({ showBackButton, setUserTheme }) {
     const checkUser = async () => {
       try {
         if (profileData && profileData.user) {
+          const email = profileData.user.email ?? "";
+          const userId = profileData.user.id?.toString();
+          setCoachStorageUser(email);
+          setChatDBUser(email);
+          // Log in to RevenueCat with our backend user ID
+          if (Platform.OS === "ios" && userId) {
+            try {
+              await Purchases.logIn(userId);
+              await Purchases.setAttributes({ userID: userId });
+            } catch (e) {
+              console.log("RC logIn error:", e);
+            }
+          }
           setLoggedIn(true);
         } else {
           setLoggedIn(false);
@@ -156,8 +171,15 @@ function AppNavigation({ showBackButton, setUserTheme }) {
       setRegisteredWithAuth(true);
     };
 
-    auth.listenLogout(() => {
+    auth.listenLogout(async () => {
       store.dispatch(apiSlice.util.resetApiState());
+      setCoachStorageUser("");
+      setChatDBUser("");
+      if (Platform.OS === "ios") {
+        try {
+          await Purchases.logOut();
+        } catch (_) {}
+      }
       setLoggedIn(false);
     });
 
@@ -196,7 +218,7 @@ function AppNavigation({ showBackButton, setUserTheme }) {
   return (
     <View style={{ flex: 1, width: "100%" }}>
       <Header showBackButton={showBackButton} toggleState={setUserTheme} />
-      
+
       {/* The Stack automatically reads your file system. 
         It will load AuthScreen.tsx, home.tsx, etc. automatically. 
       */}
@@ -213,21 +235,21 @@ export default function RootLayout() {
   const [showBackButton, setShowBackButton] = useState(false);
   const [userTheme, setUserTheme] = useState("DARK"); // DEFAULT_USER_THEME
   const [userThemeLoading, setUserThemeLoading] = useState(true);
-  
+
   useEffect(() => {
     // Initialize the Google Mobile Ads SDK
     mobileAds()
       .initialize()
-      .then(adapterStatuses => {
-        console.log('AdMob SDK Initialized', adapterStatuses);
+      .then((adapterStatuses) => {
+        console.log("AdMob SDK Initialized", adapterStatuses);
       })
-      .catch(error => {
-        console.error('AdMob Initialization Error', error);
+      .catch((error) => {
+        console.error("AdMob Initialization Error", error);
       });
 
     // Configure RevenueCat — iOS only (Android publishing not active yet)
-    if (Platform.OS === 'ios') {
-      Purchases.configure({ apiKey: 'appl_dXZERsNrMEhdHDldBBrTvQvTBNe' });
+    if (Platform.OS === "ios") {
+      Purchases.configure({ apiKey: "appl_dXZERsNrMEhdHDldBBrTvQvTBNe" });
       Purchases.setDebugLogsEnabled(__DEV__);
     }
   }, []);
@@ -261,7 +283,13 @@ export default function RootLayout() {
 
   return (
     <View style={{ height: "100%", width: "100%", backgroundColor: "red" }}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: currentTheme.palette.backgroundColor, paddingBottom: 0 }}>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: currentTheme.palette.backgroundColor,
+          paddingBottom: 0,
+        }}
+      >
         <Provider store={store}>
           <ThemeProvider theme={currentTheme}>
             <Uploady destination={{ url: `${BASEURL}` }}>

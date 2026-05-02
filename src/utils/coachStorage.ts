@@ -1,5 +1,10 @@
 import RNSecureStorage, { ACCESSIBLE } from "killuhwhal3-rn-secure-storage";
 
+// ── User-scoped storage keys ─────────────────────────────────────────────────
+let _userEmail = "";
+export const setCoachStorageUser = (email: string) => { _userEmail = email; };
+const userKey = (base: string) => _userEmail ? `${base}::${_userEmail}` : base;
+
 const COACH_PROFILE_KEY = "__coach_profile";
 const COACH_MEMORY_KEY  = "__coach_memory";
 
@@ -47,7 +52,7 @@ export const saveCoachProfile = async (
 ): Promise<boolean> => {
   try {
     await RNSecureStorage.set(
-      COACH_PROFILE_KEY,
+      userKey(COACH_PROFILE_KEY),
       JSON.stringify(profile),
       { accessible: ACCESSIBLE.WHEN_UNLOCKED }
     );
@@ -60,7 +65,7 @@ export const saveCoachProfile = async (
 
 export const getCoachProfile = async (): Promise<CoachProfile | null> => {
   try {
-    const raw = await RNSecureStorage.get(COACH_PROFILE_KEY);
+    const raw = await RNSecureStorage.get(userKey(COACH_PROFILE_KEY));
     if (!raw) return null;
     return JSON.parse(raw) as CoachProfile;
   } catch (e) {
@@ -71,7 +76,7 @@ export const getCoachProfile = async (): Promise<CoachProfile | null> => {
 
 export const clearCoachProfile = async (): Promise<boolean> => {
   try {
-    await RNSecureStorage.remove(COACH_PROFILE_KEY);
+    await RNSecureStorage.remove(userKey(COACH_PROFILE_KEY));
     return true;
   } catch (e) {
     console.log("Error clearing coach profile:", e);
@@ -98,7 +103,7 @@ export type CoachMemory = {
 
 export const getCoachMemory = async (): Promise<CoachMemory | null> => {
   try {
-    const raw = await RNSecureStorage.get(COACH_MEMORY_KEY);
+    const raw = await RNSecureStorage.get(userKey(COACH_MEMORY_KEY));
     return raw ? (JSON.parse(raw) as CoachMemory) : null;
   } catch {
     return null;
@@ -108,7 +113,7 @@ export const getCoachMemory = async (): Promise<CoachMemory | null> => {
 export const saveCoachMemory = async (memory: CoachMemory): Promise<void> => {
   try {
     await RNSecureStorage.set(
-      COACH_MEMORY_KEY,
+      userKey(COACH_MEMORY_KEY),
       JSON.stringify(memory),
       { accessible: ACCESSIBLE.WHEN_UNLOCKED }
     );
@@ -154,7 +159,7 @@ export const buildMemoryContext = (memory: CoachMemory | null): string => {
 
 export const clearCoachMemory = async (): Promise<void> => {
   try {
-    await RNSecureStorage.remove(COACH_MEMORY_KEY);
+    await RNSecureStorage.remove(userKey(COACH_MEMORY_KEY));
   } catch {}
 };
 

@@ -74,24 +74,6 @@ export default function TabLayout() {
           }}
         /> */}
       <Tabs.Screen
-        name="Profile"
-        options={{
-          title: "Profile",
-          tabBarLabelStyle: {
-            fontSize: FONTSIZE,
-            fontWeight: "bold",
-          },
-          headerShown: false,
-          tabBarIcon: ({ color, focused }) => (
-            <FontAwesome
-              size={ICONSIZE}
-              name="user-circle-o"
-              color={focused ? theme.palette.primary.main : color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="PersonalCoach"
         options={{
           title: "Coach",
@@ -104,6 +86,24 @@ export default function TabLayout() {
             <Icon
               size={ICONSIZE}
               name={focused ? "person" : "person-outline"}
+              color={focused ? theme.palette.primary.main : color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="Profile"
+        options={{
+          title: "Profile",
+          tabBarLabelStyle: {
+            fontSize: FONTSIZE,
+            fontWeight: "bold",
+          },
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <FontAwesome
+              size={ICONSIZE}
+              name="user-circle-o"
               color={focused ? theme.palette.primary.main : color}
             />
           ),

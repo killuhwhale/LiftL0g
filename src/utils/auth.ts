@@ -36,7 +36,7 @@ class AuthManager {
     console.log("Create data type for this data: ", data);
     // Perform login, update tokens access and fresh tokens
     try {
-      const res = await post(`${BASEURL}users/`, data, "multipart/form-data");
+      const res = await post(`${BASEURL}/users/`, data, "multipart/form-data");
       console.log("Register res: ", res);
 
       if (res.status != 201) {
@@ -61,7 +61,7 @@ class AuthManager {
     // Perform login, update tokens access and fresh tokens
     try {
       // console.error(": ", email);
-      const res = await post(`${BASEURL}token/`, { email: email, password });
+      const res = await post(`${BASEURL}/token/`, { email: email, password });
       const result = await res.json();
       console.log("Login res: ", result);
       // WHen user is_active=False or bad password
@@ -108,7 +108,7 @@ class AuthManager {
 
   async refreshToken(): Promise<boolean> {
     // Get refresh token and refresh the access token
-    const res = await fetch(`${BASEURL}token/refresh/`);
+    const res = await fetch(`${BASEURL}/token/refresh/`);
     console.log("Refresh res", res);
     return true;
   }

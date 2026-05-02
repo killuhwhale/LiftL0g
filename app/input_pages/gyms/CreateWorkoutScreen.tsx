@@ -107,7 +107,7 @@ interface AddWorkoutItemProps {
 const verifyWorkoutItem = (
   _item: WorkoutItemProps,
   schemeType: number,
-  schemeRounds: string
+  schemeRounds: string,
 ): { success: boolean; errorType: number; errorMsg: string } => {
   // For standard workouts: weights must match sets per item...
   // Reps are single and weights are multiple
@@ -204,7 +204,7 @@ const appendUUID = (items: WorkoutItems) => {
 
 export function handleGenerateWorkoutItemsResponse(
   response: any,
-  workoutNames: Map<string, WorkoutNameProps>
+  workoutNames: Map<string, WorkoutNameProps>,
 ): WorkoutItemProps[] {
   const { items } = response;
   if (!items || !Array.isArray(items)) return [];
@@ -219,7 +219,7 @@ export function handleGenerateWorkoutItemsResponse(
     console.log(
       "AI Suggested item undefined?:",
       item.name,
-      workoutItemsMap.get(item.name) == undefined
+      workoutItemsMap.get(item.name) == undefined,
     );
     // console.log("\n\n\n\n");
     const _item: WorkoutItemProps = {
@@ -303,6 +303,7 @@ const CreateWorkoutScreen: FunctionComponent = () => {
   const [isCreating, setIsCreating] = useState(false);
 
   const [createWorkoutError, setCreateWorkoutError] = useState("");
+  const [alertMsg, setAlertMsg] = useState("");
   const [showAlert, setShowAlert] = useState(false);
 
   const [showChatModal, setShowChatModal] = useState(false);
@@ -325,13 +326,13 @@ const CreateWorkoutScreen: FunctionComponent = () => {
       setShowChatModal(false);
       // console.log("useEffect workoutNames: ", workoutNames);
       const workoutNamesMap: Map<string, WorkoutNameProps> = new Map(
-        workoutNames.map((wn) => [wn.name, wn])
+        workoutNames.map((wn) => [wn.name, wn]),
       );
       console.log("Using map workoutNamesMap: ", workoutNamesMap);
       // Transform output from AI to a full usable object.
       const items_to_add_to_list = handleGenerateWorkoutItemsResponse(
         aiItems,
-        workoutNamesMap
+        workoutNamesMap,
       );
 
       setTitle(limitTextLength(aiItems.goal, WorkoutTitleLimit));
@@ -354,7 +355,14 @@ const CreateWorkoutScreen: FunctionComponent = () => {
 
   const _createWorkoutWithItems = async (_isUpdateMode: boolean) => {
     // Need to get file from the URI
-    if (items.length == 0 || items.length > 15) return setShowAlert(true);
+    if (items.length == 0 || items.length > 15) {
+      setAlertMsg(
+        items.length == 0
+          ? "Workout must contain workout items."
+          : "This account can only create 15 workout items per workout max.",
+      );
+      return setShowAlert(true);
+    }
 
     console.log("Creating with workout with schemeRounds: ", schemeRounds);
 
@@ -376,7 +384,7 @@ const CreateWorkoutScreen: FunctionComponent = () => {
     console.log(
       "Creatting workout with Group ID and Data: ",
       workoutGroupID,
-      workoutData
+      workoutData,
     );
 
     // Create Workout
@@ -503,19 +511,21 @@ const CreateWorkoutScreen: FunctionComponent = () => {
 
   const addWorkoutItem = (
     item: AnyWorkoutItem,
-    shouldUpdateItem: boolean
+    shouldUpdateItem: boolean,
   ): AddWorkoutItemProps => {
     const _item = { ...item };
     console.log("Adding raw item: ", _item);
     const { success, errorType, errorMsg } = verifyWorkoutItem(
       _item,
       schemeType,
-      schemeRoundsRef.current ?? ""
+      schemeRoundsRef.current ?? "",
     );
 
     if (!success) {
       if (errorType === 0) {
         setSchemeRoundsError(true);
+        setAlertMsg("Enter number of rounds before adding items");
+        setShowAlert(true);
       }
       return { success, errorType, errorMsg };
     }
@@ -633,7 +643,7 @@ const CreateWorkoutScreen: FunctionComponent = () => {
   const [toggleUpdateHack, setToggleUpdateHack] = useState(false);
 
   const requestUpdate = (
-    item: WorkoutItemProps | WorkoutDualItemProps | null
+    item: WorkoutItemProps | WorkoutDualItemProps | null,
   ) => {
     setItemToUpdate(item);
     setToggleUpdateHack(!toggleUpdateHack);
@@ -646,10 +656,10 @@ const CreateWorkoutScreen: FunctionComponent = () => {
     schemeType === 0
       ? theme.palette.AWE_Green
       : schemeType === 1
-      ? theme.palette.AWE_Blue
-      : schemeType === 2
-      ? theme.palette.AWE_Yellow
-      : theme.palette.AWE_Red;
+        ? theme.palette.AWE_Blue
+        : schemeType === 2
+          ? theme.palette.AWE_Yellow
+          : theme.palette.AWE_Red;
 
   return (
     <PageContainer style={{ flex: 1, flexDirection: "column" }}>
@@ -692,13 +702,15 @@ const CreateWorkoutScreen: FunctionComponent = () => {
             marginRight: 12,
           }}
         >
-          <SmallText textStyles={{ color: typeColor, fontWeight: "700", fontSize: 11 }}>
+          <SmallText
+            textStyles={{ color: typeColor, fontWeight: "700", fontSize: 11 }}
+          >
             {WORKOUT_TYPES[schemeType]}
           </SmallText>
         </View>
 
         {/* AI Coach button */}
-        <TouchableHighlight
+        {/* <TouchableHighlight
           onPress={() => setShowChatModal(true)}
           style={{
             borderRadius: 20,
@@ -712,7 +724,7 @@ const CreateWorkoutScreen: FunctionComponent = () => {
             color={theme.palette.AWE_Red}
             style={{ fontSize: 20 }}
           />
-        </TouchableHighlight>
+        </TouchableHighlight> */}
       </View>
 
       <View style={{ flex: 10 }}>
@@ -799,9 +811,7 @@ const CreateWorkoutScreen: FunctionComponent = () => {
                 setSchemeRounds(limitTextLength(t, SchemeTextLimit));
               }}
               setInstruction={(t) =>
-                setInstruction(
-                  limitTextLength(t, CreateSchemeInstructionLimit)
-                )
+                setInstruction(limitTextLength(t, CreateSchemeInstructionLimit))
               }
               schemeRoundsError={schemeRoundsError}
               setSchemeRoundsError={setSchemeRoundsError}
@@ -852,7 +862,13 @@ const CreateWorkoutScreen: FunctionComponent = () => {
       </View>
 
       {/* ── Save / Create button ─────────────────────────────────────────── */}
-      <View style={{ paddingVertical: 10, width: SCREEN_WIDTH, paddingHorizontal: SCREEN_WIDTH * 0.06 }}>
+      <View
+        style={{
+          paddingVertical: 10,
+          width: SCREEN_WIDTH,
+          paddingHorizontal: SCREEN_WIDTH * 0.06,
+        }}
+      >
         {!isCreating ? (
           <TouchableHighlight
             testID={TestIDs.CreateWorkoutCreateBtn.name()}
@@ -898,11 +914,7 @@ const CreateWorkoutScreen: FunctionComponent = () => {
 
       <AlertModal
         closeText="Close"
-        bodyText={
-          items.length == 0
-            ? "Workout must contain workout items."
-            : "This account can only create 15 workout items per workout max."
-        }
+        bodyText={alertMsg}
         modalVisible={showAlert}
         onRequestClose={() => setShowAlert(false)}
       />

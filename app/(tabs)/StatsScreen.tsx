@@ -27,6 +27,7 @@ import TotalsPieChart from "@/src/app_components/charts/pieChart";
 import FreqCalendar from "@/src/app_components/charts/freqCalendar";
 import BannerAddMembership from "@/src/app_components/ads/BannerAd";
 import { StatsPanel } from "@/src/app_components/Stats/StatsPanel";
+import WallCalendarView from "@/src/app_components/Stats/WallCalendarView";
 import { dateFormat } from "@/src/utils/algos";
 import FullScreenSpinner from "@/src/app_components/Spinner";
 import { useStats } from "@/hooks/useStats";
@@ -124,6 +125,7 @@ const SectionHeader: FunctionComponent<{
 // ─── Line Chart Toggle ────────────────────────────────────────────────────────
 
 type LineChartMode = "single" | "multi";
+type StatsViewMode = "analytics" | "calendar";
 
 const LineChartToggle: FunctionComponent<{
   mode: LineChartMode;
@@ -138,11 +140,12 @@ const LineChartToggle: FunctionComponent<{
     <View
       style={{
         flexDirection: "row",
-        alignSelf: "center",
+        alignSelf: "flex-start",
         backgroundColor: theme.palette.backgroundColor,
         borderRadius: 20,
         padding: 3,
         marginVertical: 8,
+        marginLeft: 14,
       }}
     >
       {options.map((opt) => {
@@ -260,6 +263,68 @@ const TabBar: FunctionComponent<{
   );
 };
 
+const MasterViewToggle: FunctionComponent<{
+  mode: StatsViewMode;
+  onChange: (mode: StatsViewMode) => void;
+}> = ({ mode, onChange }) => {
+  const theme = useTheme();
+  const options = [
+    { key: "analytics" as StatsViewMode, label: "Analytics" },
+    { key: "calendar" as StatsViewMode, label: "Calendar" },
+  ];
+
+  return (
+    <View
+      style={{
+        paddingHorizontal: 12,
+        paddingBottom: 10,
+        backgroundColor: theme.palette.darkGray,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.palette.backgroundColor,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignSelf: "center",
+          backgroundColor: theme.palette.backgroundColor,
+          borderRadius: 22,
+          padding: 4,
+        }}
+      >
+        {options.map((opt) => {
+          const active = mode === opt.key;
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              onPress={() => onChange(opt.key)}
+              activeOpacity={0.75}
+              style={{
+                paddingVertical: 7,
+                paddingHorizontal: 20,
+                borderRadius: 18,
+                backgroundColor: active ? theme.palette.AWE_Blue : "transparent",
+              }}
+            >
+              <TSCaptionText
+                textStyles={{
+                  color: active
+                    ? theme.palette.backgroundColor
+                    : theme.palette.lightGray,
+                  fontWeight: active ? "700" : "500",
+                  fontSize: 12,
+                }}
+              >
+                {opt.label}
+              </TSCaptionText>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 const StatsScreen: FunctionComponent<Props> = () => {
@@ -275,6 +340,7 @@ const StatsScreen: FunctionComponent<Props> = () => {
   const [endDateModalOpen, setEndDateModalOpen] = useState(false);
   const [lineChartMode, setLineChartMode] = useState<LineChartMode>("single");
   const [activeTab, setActiveTab] = useState(TABS[0]);
+  const [viewMode, setViewMode] = useState<StatsViewMode>("analytics");
 
   const scrollRef = useRef<ScrollView>(null);
   const sectionOffsets = useRef<Record<string, number>>({});
@@ -483,8 +549,12 @@ const StatsScreen: FunctionComponent<Props> = () => {
         title="End Date"
       />
 
+      <MasterViewToggle mode={viewMode} onChange={setViewMode} />
+
       {/* ── Tab Bar ─────────────────────────────────────────────── */}
-      <TabBar active={activeTab} onPress={scrollToTab} />
+      {viewMode === "analytics" ? (
+        <TabBar active={activeTab} onPress={scrollToTab} />
+      ) : null}
 
       {/* ── Chart Scroll Area ───────────────────────────────────── */}
       <View style={{ flex: 1 }}>
@@ -495,86 +565,102 @@ const StatsScreen: FunctionComponent<Props> = () => {
         >
           {dataReady ? (
             <>
-              {/* Frequency */}
-              {Platform.OS !== "ios" && (
-                <View onLayout={onSectionLayout("Frequency")}>
-                  <ChartCard>
-                    <SectionHeader
-                      title="Workout Frequency"
-                      subtitle="Activity heatmap for the selected range"
-                    />
-                    <FreqCalendar
-                      startDate={startDate}
-                      endDate={endDate}
-                      data={data}
-                    />
-                  </ChartCard>
-                </View>
-              )}
-
-              {/* Summary */}
-              <View onLayout={onSectionLayout("Summary")}>
-                <ChartCard>
-                  <SectionHeader
-                    title="Summary"
-                    subtitle="Totals across all workouts in range"
-                  />
-                  <StatsPanel tags={totalTags} names={totalNames} />
-                </ChartCard>
-              </View>
-
-              {/* Volume */}
-              <View onLayout={onSectionLayout("Volume")}>
-                <ChartCard>
-                  <SectionHeader
-                    title="Volume by Category"
-                    subtitle="Cumulative metric totals grouped by tag or name"
-                  />
-                  <TotalsBarChart
-                    dataTypes={dataTypes}
-                    tags={totalTags}
-                    names={totalNames}
-                  />
-                </ChartCard>
-              </View>
-
-              {/* Trends */}
-              <View onLayout={onSectionLayout("Trends")}>
-                <ChartCard>
-                  <SectionHeader
-                    title="Trends Over Time"
-                    subtitle={
-                      lineChartMode === "single"
-                        ? "Focus on one tag or name at a time"
-                        : "Compare all tags or names side-by-side"
-                    }
-                  />
-                  <LineChartToggle
-                    mode={lineChartMode}
-                    onChange={setLineChartMode}
-                  />
-                  {lineChartMode === "single" ? (
-                    <TotalsLineChart {...sharedLineProps} />
-                  ) : (
-                    <MultiLineChart {...sharedLineProps} />
+              {viewMode === "analytics" ? (
+                <>
+                  {/* Frequency */}
+                  {Platform.OS !== "ios" && (
+                    <View onLayout={onSectionLayout("Frequency")}>
+                      <ChartCard>
+                        <SectionHeader
+                          title="Workout Frequency"
+                          subtitle="Activity heatmap for the selected range"
+                        />
+                        <FreqCalendar
+                          startDate={startDate}
+                          endDate={endDate}
+                          data={data}
+                        />
+                      </ChartCard>
+                    </View>
                   )}
-                </ChartCard>
-              </View>
 
-              {/* Distribution */}
-              <View onLayout={onSectionLayout("Distribution")}>
+                  {/* Summary */}
+                  <View onLayout={onSectionLayout("Summary")}>
+                    <ChartCard>
+                      <SectionHeader
+                        title="Summary"
+                        subtitle="Totals across all workouts in range"
+                      />
+                      <StatsPanel tags={totalTags} names={totalNames} />
+                    </ChartCard>
+                  </View>
+
+                  {/* Volume */}
+                  <View onLayout={onSectionLayout("Volume")}>
+                    <ChartCard>
+                      <SectionHeader
+                        title="Volume by Category"
+                        subtitle="Cumulative metric totals grouped by tag or name"
+                      />
+                      <TotalsBarChart
+                        dataTypes={dataTypes}
+                        tags={totalTags}
+                        names={totalNames}
+                      />
+                    </ChartCard>
+                  </View>
+
+                  {/* Trends */}
+                  <View onLayout={onSectionLayout("Trends")}>
+                    <ChartCard>
+                      <SectionHeader
+                        title="Trends Over Time"
+                        subtitle={
+                          lineChartMode === "single"
+                            ? "Focus on one tag or name at a time"
+                            : "Compare all tags or names side-by-side"
+                        }
+                      />
+                      <LineChartToggle
+                        mode={lineChartMode}
+                        onChange={setLineChartMode}
+                      />
+                      {lineChartMode === "single" ? (
+                        <TotalsLineChart {...sharedLineProps} />
+                      ) : (
+                        <MultiLineChart {...sharedLineProps} />
+                      )}
+                    </ChartCard>
+                  </View>
+
+                  {/* Distribution */}
+                  <View onLayout={onSectionLayout("Distribution")}>
+                    <ChartCard>
+                      <SectionHeader
+                        title="Distribution"
+                        subtitle="Proportional breakdown by tag or name"
+                      />
+                      <TotalsPieChart
+                        dataTypes={dataTypes}
+                        tags={totalTags}
+                        names={totalNames}
+                      />
+                    </ChartCard>
+                  </View>
+                </>
+              ) : (
                 <ChartCard>
                   <SectionHeader
-                    title="Distribution"
-                    subtitle="Proportional breakdown by tag or name"
+                    title="Wall Calendar"
+                    subtitle="A real month-by-month training calendar for the selected range"
                   />
-                  <TotalsPieChart
-                    dataTypes={dataTypes}
-                    tags={totalTags}
-                    names={totalNames}
+                  <WallCalendarView
+                    data={data}
+                    startDate={startDate}
+                    endDate={endDate}
                   />
                 </ChartCard>
-              </View>
+              )}
             </>
           ) : (
             <View style={{ alignItems: "center", paddingTop: 60 }}>

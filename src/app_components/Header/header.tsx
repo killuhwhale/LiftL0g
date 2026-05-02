@@ -61,7 +61,11 @@ const Header: FunctionComponent<{
         <></>
       )}
 
-      <TouchableOpacity activeOpacity={0.69} onPress={handleNavToHome}>
+      <TouchableOpacity
+        activeOpacity={0.69}
+        onPress={handleNavToHome}
+        style={{ width: "75%" }}
+      >
         <View
           style={{ flexDirection: "row", paddingVertical: 8, marginLeft: 12 }}
         >

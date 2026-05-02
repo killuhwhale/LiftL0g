@@ -2,17 +2,19 @@
   "expo": {
     "name": "LiftL0g",
     "slug": "LiftL0g",
-    "version": "1.0.0",
+    "version": "3.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "liftl0g",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "buildNumber": "42",
       "supportsTablet": true,
       "bundleIdentifier": "com.killuhwhale.reptracker",
       "infoPlist": {
-        "SKStoreKitTestingConfigurationFilename": "LiftL0g_IAP_testing"
+        "SKStoreKitTestingConfigurationFilename": "LiftL0g_IAP_testing",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -56,6 +58,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b135096e-691c-4d2f-af6d-10bf592d2feb"
+      }
     }
   }
 }

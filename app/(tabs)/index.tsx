@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { ActivityIndicator, TextInput, TouchableOpacity, View } from "react-native";
 import { useTheme } from "styled-components/native";
+import { useFocusEffect } from "expo-router";
 import {
   WorkoutGroupCardProps,
   WorkoutGroupProps,
@@ -99,6 +100,7 @@ const UserWorkoutsScreen: FunctionComponent = () => {
   const {
     data: dataWG,
     isLoading: isLoadingWG,
+    refetch: refetchWorkoutGroups,
   } = useGetProfileWorkoutGroupsQuery(page);
 
   const { five_3_1, isLoading: isTemplateLoading } = useGenerate531Template();
@@ -124,27 +126,52 @@ const UserWorkoutsScreen: FunctionComponent = () => {
   };
 
   const currentWorkoutGroupsRef = useRef<{ [key: number]: number }>({});
+
+  useFocusEffect(
+    useCallback(() => {
+      currentWorkoutGroupsRef.current = {};
+      setPage(1);
+      refetchWorkoutGroups();
+    }, [refetchWorkoutGroups])
+  );
+
   useEffect(() => {
     if (dataWG?.results?.length > 0) {
       setWorkouts((prev) => {
-        const next: WorkoutGroupProps[] = [];
-        for (const wg of dataWG.results) {
+        const visibleResults = dataWG.results.filter((wg) => !wg.archived);
+
+        if (page === 1) {
+          currentWorkoutGroupsRef.current = Object.fromEntries(
+            visibleResults.map((wg) => [wg.id, 1])
+          );
+          return [...visibleResults];
+        }
+
+        const incoming = new Map<number, WorkoutGroupProps>();
+        for (const wg of visibleResults) {
+          incoming.set(wg.id, wg);
+        }
+
+        // Update existing items with fresh data, keep items not in this page
+        const merged = prev.map((wg) =>
+          incoming.has(wg.id) ? incoming.get(wg.id)! : wg
+        );
+
+        // Add any genuinely new items
+        for (const wg of visibleResults) {
           if (!(wg.id in currentWorkoutGroupsRef.current)) {
-            next.push(wg);
             currentWorkoutGroupsRef.current[wg.id] = 1;
+            const idx = merged.findIndex((x) => x.for_date < wg.for_date);
+            idx === -1 ? merged.push(wg) : merged.splice(idx, 0, wg);
           }
         }
-        const merged = [...prev];
-        for (const w of next) {
-          const idx = merged.findIndex((x) => x.for_date < w.for_date);
-          idx === -1 ? merged.push(w) : merged.splice(idx, 0, w);
-        }
-        return merged;
+        return merged.filter((wg) => !wg.archived);
       });
     } else {
+      currentWorkoutGroupsRef.current = {};
       setWorkouts([]);
     }
-  }, [dataWG]);
+  }, [dataWG, page]);
 
   useEffect(() => {
     if (isSearching && !workoutGroupsEqual(searchData, searchResults)) {

@@ -30,13 +30,22 @@ const PasswordField: FunctionComponent<{
   toggleHidden(): void;
   error?: boolean;
   hint?: string;
-}> = ({ label, placeholder, value, onChangeText, hidden, toggleHidden, error, hint }) => {
+}> = ({
+  label,
+  placeholder,
+  value,
+  onChangeText,
+  hidden,
+  toggleHidden,
+  error,
+  hint,
+}) => {
   const theme = useTheme();
   const borderColor = error
     ? theme.palette.AWE_Red
     : value.length > 0
-    ? `${theme.palette.AWE_Blue}88`
-    : lightenHexColor(theme.palette.lightGray, 0.12);
+      ? `${theme.palette.AWE_Blue}88`
+      : lightenHexColor(theme.palette.lightGray, 0.12);
 
   return (
     <View style={{ marginBottom: 16 }}>
@@ -75,24 +84,21 @@ const PasswordField: FunctionComponent<{
           {/* TextInput via a native component — using the Input wrapper causes layout issues here */}
           <React.Fragment>
             {/* We render a raw TextInput so we can fully control height */}
-            {React.createElement(
-              require("react-native").TextInput,
-              {
-                value,
-                onChangeText,
-                placeholder,
-                placeholderTextColor: lightenHexColor(theme.palette.text, 0.3),
-                secureTextEntry: hidden,
-                autoCapitalize: "none",
-                autoCorrect: false,
-                style: {
-                  flex: 1,
-                  color: theme.palette.text,
-                  fontSize: 15,
-                  paddingVertical: 0,
-                },
-              }
-            )}
+            {React.createElement(require("react-native").TextInput, {
+              value,
+              onChangeText,
+              placeholder,
+              placeholderTextColor: lightenHexColor(theme.palette.text, 0.3),
+              secureTextEntry: hidden,
+              autoCapitalize: "none",
+              autoCorrect: false,
+              style: {
+                flex: 1,
+                color: theme.palette.text,
+                fontSize: 15,
+                paddingVertical: 0,
+              },
+            })}
           </React.Fragment>
         </View>
         <Pressable onPress={toggleHidden} hitSlop={8}>
@@ -154,7 +160,7 @@ const ResetPasswordScreen: FunctionComponent = () => {
 
     setIsLoading(true);
     try {
-      const res = await authPost(`${BASEURL}user/reset_password_with_old/`, {
+      const res = await authPost(`${BASEURL}/user/reset_password_with_old/`, {
         password,
         new_password: newPassword,
         password_confirm: passwordConfirm,
@@ -181,8 +187,14 @@ const ResetPasswordScreen: FunctionComponent = () => {
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ flex: 1, alignItems: "center", paddingTop: 48, paddingBottom: 40 }}>
-
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            paddingTop: 48,
+            paddingBottom: 40,
+          }}
+        >
           {/* Icon header */}
           <View
             style={{
@@ -243,7 +255,11 @@ const ResetPasswordScreen: FunctionComponent = () => {
                   />
                 </View>
                 <TSSnippetText
-                  textStyles={{ fontWeight: "700", marginBottom: 6, textAlign: "center" }}
+                  textStyles={{
+                    fontWeight: "700",
+                    marginBottom: 6,
+                    textAlign: "center",
+                  }}
                 >
                   Password updated!
                 </TSSnippetText>
@@ -266,7 +282,9 @@ const ResetPasswordScreen: FunctionComponent = () => {
                     opacity: pressed ? 0.75 : 1,
                   })}
                 >
-                  <TSCaptionText textStyles={{ color: "white", fontWeight: "700" }}>
+                  <TSCaptionText
+                    textStyles={{ color: "white", fontWeight: "700" }}
+                  >
                     Done
                   </TSCaptionText>
                 </Pressable>
@@ -288,7 +306,10 @@ const ResetPasswordScreen: FunctionComponent = () => {
                 <View
                   style={{
                     height: 1,
-                    backgroundColor: lightenHexColor(theme.palette.lightGray, 0.08),
+                    backgroundColor: lightenHexColor(
+                      theme.palette.lightGray,
+                      0.08,
+                    ),
                     marginBottom: 16,
                   }}
                 />
@@ -309,9 +330,7 @@ const ResetPasswordScreen: FunctionComponent = () => {
                   onChangeText={setPasswordConfirm}
                   hidden={hidePasswordConfirm}
                   toggleHidden={() => setHidePasswordConfirm((v) => !v)}
-                  error={
-                    passwordConfirm.length > 0 && !passwordsMatch
-                  }
+                  error={passwordConfirm.length > 0 && !passwordsMatch}
                   hint={
                     passwordConfirm.length > 0
                       ? passwordsMatch
@@ -344,7 +363,11 @@ const ResetPasswordScreen: FunctionComponent = () => {
                       <Icon
                         name="checkmark-circle-outline"
                         size={17}
-                        color={canSubmit ? "white" : lightenHexColor(theme.palette.text, 0.3)}
+                        color={
+                          canSubmit
+                            ? "white"
+                            : lightenHexColor(theme.palette.text, 0.3)
+                        }
                         style={{ marginRight: 7 }}
                       />
                       <TSCaptionText

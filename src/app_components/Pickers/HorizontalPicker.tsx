@@ -125,9 +125,11 @@ const HorizontalPicker: FunctionComponent<{
           style={[
             {
               width: itemWidth,
+              justifyContent: 'center',
+              minHeight: 40,
             },
           ]}>
-          <TSCaptionText textStyles={{textAlign: 'center'}}>
+          <TSCaptionText textStyles={{textAlign: 'center', fontSize: 13, fontWeight: '600'}}>
             {label}
           </TSCaptionText>
         </View>,
@@ -138,14 +140,14 @@ const HorizontalPicker: FunctionComponent<{
   };
 
   return (
-    <View style={{flex: 1, width: '100%'}} onLayout={getWidthLayout}>
+    <View style={{flex: 1, width: '100%', minHeight: 40}} onLayout={getWidthLayout}>
       <MaskedView
-        style={{flex: 1, height: '100%', flexDirection: 'row', width: '100%'}}
+        style={{flex: 1, height: '100%', flexDirection: 'row', width: '100%', minHeight: 40}}
         androidRenderingMode="software"
         maskElement={
           <Animated.View
             style={[
-              {flexDirection: 'row', height: '100%', alignItems: 'center'},
+              {flexDirection: 'row', height: '100%', alignItems: 'center', minHeight: 40},
               uas,
             ]}>
             {mapData()}

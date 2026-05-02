@@ -1,17 +1,15 @@
 const nodeEnv = process.env.NODE_ENV || "";
 
-const DOMAIN_NAME = process.env.EXPO_PUBLIC_DOMAIN_NAME || ""
-
 const isDevEnv = ["development", "test"].indexOf(nodeEnv) >= 0;
 
-const BASEURL = isDevEnv
-  ? "http://192.168.68.55:8000/"
-  : `https://${DOMAIN_NAME}/ffapi/`;
+// const BASEURL = "http://10.0.2.2:8000/" // android emulator
+const BASEURL_FRONTEND = "https://liftl0g.com";
+const BASEURL = "https://api.liftl0g.com";
 
 console.log("Using Baseurl: ", BASEURL);
 console.log("Env vars: ", process.env);
-// const BASEURL = "http://10.0.2.2:8000/" // android emulator
 
+const TOKENS_PER_CREDIT = 40_000;
 const SPACES_URL = "";
 
 const devLog = (...args: any) => {
@@ -33,11 +31,11 @@ class TestIDs {
   static CreateWorkoutSchemeReps = new TestIDs("CreateWorkoutSchemeReps");
   static CreateWorkoutSchemeRounds = new TestIDs("CreateWorkoutSchemeRounds");
   static CreateWorkoutSchemeCreative = new TestIDs(
-    "CreateWorkoutSchemeCreative"
+    "CreateWorkoutSchemeCreative",
   );
 
   static CreatePersonalWorkoutGroupBtn = new TestIDs(
-    "CreatePersonalWorkoutGroupBtn"
+    "CreatePersonalWorkoutGroupBtn",
   );
 
   static GymRowTouchable = new TestIDs("GymRowTouchable");
@@ -46,7 +44,7 @@ class TestIDs {
   static CreateGymScreenBtn = new TestIDs("CreateGymScreenBtn");
   static CreateGymClassScreenBtn = new TestIDs("CreateGymClassScreenBtn");
   static CreateWorkoutGroupScreenBtn = new TestIDs(
-    "CreateWorkoutGroupScreenBtn"
+    "CreateWorkoutGroupScreenBtn",
   );
   static ResetPasswordScreenBtn = new TestIDs("ResetPasswordScreenBtn");
   static CloseProfileSettingsBtn = new TestIDs("CloseProfileSettingsBtn");
@@ -73,7 +71,7 @@ class TestIDs {
   static GymClassDescField = new TestIDs("GymClassDescField");
   static GymClassPrivateSwitch = new TestIDs("GymClassPrivateSwitch");
   static GymClassRNPickerTouchableGym = new TestIDs(
-    "GymClassRNPickerTouchableGym"
+    "GymClassRNPickerTouchableGym",
   );
   static GymClassRNPickerModalGym = new TestIDs("GymClassRNPickerModalGym");
   static GymClassRNPickerGym = new TestIDs("GymClassRNPickerGym");
@@ -81,7 +79,7 @@ class TestIDs {
 
   // GymClassScreen
   static CreateWorkoutGroupScreenForClassBtn = new TestIDs(
-    "CreateWorkoutGroupScreenForClassBtn"
+    "CreateWorkoutGroupScreenForClassBtn",
   );
 
   // WorkoutGroupScreen
@@ -93,7 +91,7 @@ class TestIDs {
   static CreateRegularWorkoutBtn = new TestIDs("CreateRegularWorkoutBtn");
   static DeleteWorkoutBtn = new TestIDs("DeleteWorkoutBtn");
   static ToggleShowCreateWorkoutBtns = new TestIDs(
-    "ToggleShowCreateWorkoutBtns"
+    "ToggleShowCreateWorkoutBtns",
   );
   static WorkoutScreenScrollView = new TestIDs("WorkoutScreenScrollView");
   static WorkoutCardList = new TestIDs("WorkoutCardList"); // Holds list of workouts, count childitem for num of workouts
@@ -108,25 +106,25 @@ class TestIDs {
   // Add Item Panel on Create workoutscreen
   static AddItemPauseDurField = new TestIDs("AddItemPauseDurField");
   static AddItemRNPickerTouchableItemPicker = new TestIDs(
-    "AddItemRNPickerTouchableItemPicker"
+    "AddItemRNPickerTouchableItemPicker",
   );
   static AddItemRNPickerModalItemPicker = new TestIDs(
-    "com.fitform:id/select_dialog_listview"
+    "com.fitform:id/select_dialog_listview",
   );
   static VerticalPickerGestureHandlerQtyType = new TestIDs(
-    "VerticalPickerGestureHandlerQtyType"
+    "VerticalPickerGestureHandlerQtyType",
   );
   static VerticalPickerGestureHandlerDuration = new TestIDs(
-    "VerticalPickerGestureHandlerDuration"
+    "VerticalPickerGestureHandlerDuration",
   );
   static VerticalPickerGestureHandlerDistance = new TestIDs(
-    "VerticalPickerGestureHandlerDistance"
+    "VerticalPickerGestureHandlerDistance",
   );
   static VerticalPickerGestureHandlerWtUnit = new TestIDs(
-    "VerticalPickerGestureHandlerWtUnit"
+    "VerticalPickerGestureHandlerWtUnit",
   );
   static VerticalPickerGestureHandlerRestUnit = new TestIDs(
-    "VerticalPickerGestureHandlerRestUnit"
+    "VerticalPickerGestureHandlerRestUnit",
   );
   static AddItemSetsField = new TestIDs("AddItemSetsField");
   static AddItemRepsField = new TestIDs("AddItemRepsField");
@@ -138,11 +136,11 @@ class TestIDs {
   // Opens Item Name picker filter listview
   // Each item in the list has an ID by its WorkoutName
   static AddItemChooseWorkoutNameField = new TestIDs(
-    "AddItemChooseWorkoutNameField"
+    "AddItemChooseWorkoutNameField",
   );
   // Search input for workout names in filter modal
   static AddItemFilterModalInputField = new TestIDs(
-    "AddItemFilterModalInputField"
+    "AddItemFilterModalInputField",
   );
 
   static AuthSignUpBtn = new TestIDs("AuthSignUpBtn");
@@ -166,5 +164,13 @@ class TestIDs {
   }
 }
 
-export { BASEURL, devLog, DOMAIN_NAME, isDevEnv, nodeEnv, SPACES_URL, TestIDs };
-
+export {
+  BASEURL,
+  BASEURL_FRONTEND,
+  devLog,
+  isDevEnv,
+  nodeEnv,
+  TOKENS_PER_CREDIT,
+  SPACES_URL,
+  TestIDs,
+};

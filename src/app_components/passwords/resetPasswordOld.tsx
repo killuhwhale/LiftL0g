@@ -42,7 +42,7 @@ const ResetPasswordOld: FunctionComponent = () => {
       // data.append('new_password', newPassword);
       // data.append('password_confirm', passwordConfirm);
 
-      const res = await authPost(`${BASEURL}user/reset_password_with_old/`, {
+      const res = await authPost(`${BASEURL}/user/reset_password_with_old/`, {
         password: password,
         new_password: newPassword,
         password_confirm: passwordConfirm,

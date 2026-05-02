@@ -1,5 +1,11 @@
 import React, { FunctionComponent, useState, useEffect } from "react";
-import { View, TouchableOpacity } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  InputAccessoryView,
+  Keyboard,
+  Platform,
+} from "react-native";
 import { useTheme } from "styled-components/native";
 
 import { TSCaptionText, TSInputTextSm, XSmallText } from "@/src/app_components/Text/Text";
@@ -38,6 +44,8 @@ interface AddWorkoutItemProps {
   errorMsg: string;
 }
 
+const NUMERIC_ACCESSORY_ID = "numericKeyboardDone";
+
 const isArrayStringEmpty = (s: string) => stripArrStr(s) === "0";
 const stripArrStr = (s: string) =>
   s.substring(1, s.length - 1).replaceAll(",", " ");
@@ -62,6 +70,11 @@ const NumericField: FunctionComponent<{
   onChange(t: string): void;
 }> = ({ label, value, placeholder, testID, isError, helperText, onChange }) => {
   const theme = useTheme();
+  const accessoryId =
+    Platform.OS === "ios"
+      ? `${NUMERIC_ACCESSORY_ID}-${testID ?? label.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`
+      : undefined;
+
   return (
     <View style={{ flex: 1 }}>
       <FieldLabel>{label}</FieldLabel>
@@ -85,7 +98,47 @@ const NumericField: FunctionComponent<{
         isError={isError}
         helperText={helperText}
         onChangeText={onChange}
+        onSubmitEditing={() => Keyboard.dismiss()}
+        returnKeyType="done"
+        inputAccessoryViewID={accessoryId}
       />
+
+      {Platform.OS === "ios" && accessoryId ? (
+        <InputAccessoryView nativeID={accessoryId}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "flex-end",
+              backgroundColor: theme.palette.darkGray,
+              borderTopWidth: 1,
+              borderTopColor: `${theme.palette.lightGray}22`,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => Keyboard.dismiss()}
+              activeOpacity={0.75}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 6,
+                borderRadius: 8,
+                backgroundColor: theme.palette.primary.main,
+              }}
+            >
+              <TSCaptionText
+                textStyles={{
+                  color: theme.palette.backgroundColor,
+                  fontWeight: "700",
+                  fontSize: 14,
+                }}
+              >
+                Done
+              </TSCaptionText>
+            </TouchableOpacity>
+          </View>
+        </InputAccessoryView>
+      ) : null}
     </View>
   );
 };
@@ -793,6 +846,7 @@ const AddItem: FunctionComponent<{
         closeText="Close"
         key="AlertWeightErrorModal"
       />
+
     </View>
   );
 };

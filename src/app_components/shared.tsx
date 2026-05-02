@@ -1116,6 +1116,14 @@ export const formatLongDate = (date: Date) => {
   return monthNames[monthIndex] + " " + day + ", " + year;
 };
 
+function parseBackendUTCDate(date: Date | string): Date {
+  if (date instanceof Date) return date;
+
+  const trimmedDate = date.trim();
+  const hasTimezone = /(?:z|[+-]\d{2}:?\d{2})$/i.test(trimmedDate);
+  return new Date(hasTimezone ? trimmedDate : `${trimmedDate}Z`);
+}
+
 export function isDateInFuture(user: UserProps, ignoreFlag = false): boolean {
   if (!user) return false;
   const date = user.sub_end_date;
@@ -1126,10 +1134,7 @@ export function isDateInFuture(user: UserProps, ignoreFlag = false): boolean {
     return true;
   }
 
-  if (typeof date == typeof "") {
-    return new Date(date) > new Date();
-  }
-  return date > new Date();
+  return parseBackendUTCDate(date).getTime() > Date.now();
 }
 
 export function limitTextLength(t: string, limit: number) {

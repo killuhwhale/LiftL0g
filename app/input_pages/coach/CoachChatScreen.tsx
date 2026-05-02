@@ -39,7 +39,6 @@ import {
   getMessages,
   initChatDB,
   insertMessage,
-  touchSession,
   updateSessionTitle,
 } from "@/src/utils/chatDB";
 
@@ -206,7 +205,6 @@ const CoachChatScreen: FunctionComponent = () => {
         };
         await insertMessage(coachMsg);
         setMessages((prev) => [...prev, coachMsg]);
-        await touchSession(activeSessionId);
 
         // Persist any new user facts the AI extracted
         if (result.memory_update && typeof result.memory_update === "object") {

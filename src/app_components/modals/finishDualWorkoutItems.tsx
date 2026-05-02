@@ -109,6 +109,7 @@ const FinishDualWorkoutItems: FunctionComponent<{
   bodyText: string;
   workoutGroup: WorkoutGroupProps;
   setShowFinishWorkoutGroupModal(show: boolean): void;
+  onFinishError?(msg: string): void;
 }> = ({
   modalVisible,
   onRequestClose,
@@ -116,6 +117,7 @@ const FinishDualWorkoutItems: FunctionComponent<{
   bodyText,
   workoutGroup,
   setShowFinishWorkoutGroupModal,
+  onFinishError,
 }) => {
   const theme = useTheme();
   const sheetRef = useRef<BottomSheetModal>(null);
@@ -227,8 +229,15 @@ const FinishDualWorkoutItems: FunctionComponent<{
               await finishWorkoutGroup(data).unwrap();
               onRequestClose();
               setShowFinishWorkoutGroupModal(false);
-            } catch (err) {
+            } catch (err: any) {
               console.log("Error finishing workout", err);
+              onRequestClose();
+              setShowFinishWorkoutGroupModal(false);
+              const message =
+                err?.data?.error ||
+                err?.data?.err ||
+                "Failed to finish workout. Please try again.";
+              onFinishError?.(message);
             }
           }
         });

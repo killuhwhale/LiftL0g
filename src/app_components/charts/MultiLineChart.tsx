@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, View, TouchableOpacity } from "react-native";
 import { useTheme } from "styled-components/native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { TSCaptionText, TSParagrapghText, XSmallText } from "../Text/Text";
@@ -201,22 +201,41 @@ const MultiLineChart: FunctionComponent<{
           width: "100%",
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between",
           marginBottom: 6,
         }}
       >
-        <TSParagrapghText>Totals by date</TSParagrapghText>
-
         <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <TSCaptionText textStyles={{ color: theme.palette.gray, marginRight: 4 }}>
-            {showTags ? "Tags" : "Names"}
-          </TSCaptionText>
-          <Icon
-            name="repeat"
-            color={theme.palette.text}
-            style={{ fontSize: 22 }}
+          <TSParagrapghText>Totals by date</TSParagrapghText>
+          <TouchableOpacity
             onPress={() => setShowTags((prev) => !prev)}
-          />
+            activeOpacity={0.75}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginLeft: 10,
+              paddingVertical: 7,
+              paddingHorizontal: 10,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: `${theme.palette.AWE_Blue}55`,
+              backgroundColor: `${theme.palette.AWE_Blue}14`,
+            }}
+          >
+            <Icon
+              name="swap-horizontal-outline"
+              color={theme.palette.AWE_Blue}
+              style={{ fontSize: 18, marginRight: 6 }}
+            />
+            <TSCaptionText
+              textStyles={{
+                color: theme.palette.AWE_Blue,
+                fontSize: 12,
+                fontWeight: "700",
+              }}
+            >
+              {showTags ? "Tags" : "Names"}
+            </TSCaptionText>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -225,7 +244,7 @@ const MultiLineChart: FunctionComponent<{
 
       {/* Metric picker */}
       {filteredDataTypesAbbrev.length > 0 && (
-        <View style={{ width: "100%", height: 32, marginBottom: 8 }}>
+        <View style={{ width: "100%", minHeight: 44, marginBottom: 10 }}>
           <HorizontalPicker
             key={`hpMetrics_${filteredDataTypesAbbrev.length}_${showTags}`}
             data={filteredDataTypesAbbrev}

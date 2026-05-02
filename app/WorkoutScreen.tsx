@@ -63,6 +63,7 @@ import Icon from "react-native-vector-icons/Ionicons";
 
 import { MediaURLSliderClass } from "../src/app_components/MediaSlider/MediaSlider";
 import ActionCancelModal from "../src/app_components/modals/ActionCancelModal";
+import AlertModal from "../src/app_components/modals/AlertModal";
 import { StatsPanel } from "../src/app_components/Stats/StatsPanel";
 import { TestIDs } from "../src/utils/constants";
 import BannerAddMembership from "../src/app_components/ads/BannerAd";
@@ -606,6 +607,7 @@ const WorkoutScreen: FunctionComponent = () => {
     useState(false);
   const [showFinishWorkoutGroupModal, setShowFinishWorkoutGroupModal] =
     useState(false);
+  const [finishError, setFinishError] = useState("");
 
   const [tags, names] = useMemo(() => {
     const calc = new CalcWorkoutStats(new Map()); // Doesnt need maxes since we are calculating them when creating, we  just use this to combine workouts...
@@ -740,9 +742,7 @@ const WorkoutScreen: FunctionComponent = () => {
     setTimeout(() => {
       setIsWaitingForDelete(false);
       disableDeleteBtnRed.current = false;
-      router.push({
-        pathname: "/",
-      });
+      router.replace("/(tabs)");
     }, 750);
   };
 
@@ -775,8 +775,14 @@ const WorkoutScreen: FunctionComponent = () => {
       const res = await finishWorkoutGroup(formdata).unwrap();
       console.log("res finsih", res);
       setShowFinishWorkoutGroupModal(false);
-    } catch (err) {
+    } catch (err: any) {
       console.log("Error finishing workout", err);
+      setShowFinishWorkoutGroupModal(false);
+      const message =
+        err?.data?.error ||
+        err?.data?.err ||
+        "Failed to finish workout. Please try again.";
+      setFinishError(message);
     }
   };
 
@@ -1348,6 +1354,13 @@ const WorkoutScreen: FunctionComponent = () => {
         setShowFinishWorkoutGroupModal={() =>
           setShowFinishWorkoutGroupModal(false)
         }
+        onFinishError={(msg: string) => setFinishError(msg)}
+      />
+      <AlertModal
+        modalVisible={!!finishError}
+        onRequestClose={() => setFinishError("")}
+        bodyText={finishError}
+        closeText="OK"
       />
     </View>
   );

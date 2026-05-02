@@ -2,10 +2,7 @@ import React, { FunctionComponent, useState } from "react";
 import { View, TextInput, Pressable } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useTheme } from "styled-components/native";
-import {
-  TSCaptionText,
-  TSSnippetText,
-} from "@/src/app_components/Text/Text";
+import { TSCaptionText, TSSnippetText } from "@/src/app_components/Text/Text";
 import { lightenHexColor } from "@/src/app_components/shared";
 import { BASEURL } from "@/src/utils/constants";
 import { post } from "@/src/utils/fetchAPI";
@@ -20,13 +17,21 @@ const Field: FunctionComponent<{
   keyboardType?: "default" | "email-address";
   error?: boolean;
   hint?: string;
-}> = ({ icon, placeholder, value, onChangeText, keyboardType = "default", error, hint }) => {
+}> = ({
+  icon,
+  placeholder,
+  value,
+  onChangeText,
+  keyboardType = "default",
+  error,
+  hint,
+}) => {
   const theme = useTheme();
   const borderColor = error
     ? theme.palette.AWE_Red
     : value.length > 0
-    ? `${theme.palette.AWE_Green}66`
-    : lightenHexColor(theme.palette.lightGray, 0.1);
+      ? `${theme.palette.AWE_Green}66`
+      : lightenHexColor(theme.palette.lightGray, 0.1);
 
   return (
     <View style={{ marginBottom: hint ? 20 : 14 }}>
@@ -113,7 +118,7 @@ const ResetPasswordAuthPage: FunctionComponent<ResetPasswordAuthPageProps> = ({
     setIsLoading(true);
     try {
       const result = await (
-        await post(`${BASEURL}user/send_reset_code/`, { email: resetEmail })
+        await post(`${BASEURL}/user/send_reset_code/`, { email: resetEmail })
       ).json();
       if (result.error) {
         setResetEmailError(result.error);
@@ -165,7 +170,11 @@ const ResetPasswordAuthPage: FunctionComponent<ResetPasswordAuthPageProps> = ({
             style={{ marginRight: 8 }}
           />
           <TSCaptionText
-            textStyles={{ color: theme.palette.AWE_Green, flex: 1, fontSize: 12 }}
+            textStyles={{
+              color: theme.palette.AWE_Green,
+              flex: 1,
+              fontSize: 12,
+            }}
           >
             Reset code sent! Check your inbox.
           </TSCaptionText>
@@ -176,10 +185,9 @@ const ResetPasswordAuthPage: FunctionComponent<ResetPasswordAuthPageProps> = ({
         onPress={sendEmail}
         disabled={showHint || isLoading}
         style={({ pressed }) => ({
-          backgroundColor:
-            showHint
-              ? lightenHexColor(theme.palette.AWE_Green, 0.1)
-              : theme.palette.AWE_Green,
+          backgroundColor: showHint
+            ? lightenHexColor(theme.palette.AWE_Green, 0.1)
+            : theme.palette.AWE_Green,
           borderRadius: 12,
           paddingVertical: 14,
           alignItems: "center",
@@ -195,7 +203,9 @@ const ResetPasswordAuthPage: FunctionComponent<ResetPasswordAuthPageProps> = ({
           color="white"
           style={{ marginRight: 7 }}
         />
-        <TSCaptionText textStyles={{ color: "white", fontWeight: "700", fontSize: 14 }}>
+        <TSCaptionText
+          textStyles={{ color: "white", fontWeight: "700", fontSize: 14 }}
+        >
           {showHint ? "Code Sent" : "Send Reset Code"}
         </TSCaptionText>
       </Pressable>
@@ -213,7 +223,11 @@ const ResetPasswordAuthPage: FunctionComponent<ResetPasswordAuthPageProps> = ({
           })}
         >
           <TSCaptionText
-            textStyles={{ color: theme.palette.AWE_Blue, fontWeight: "700", fontSize: 13 }}
+            textStyles={{
+              color: theme.palette.AWE_Blue,
+              fontWeight: "700",
+              fontSize: 13,
+            }}
           >
             Enter Code →
           </TSCaptionText>

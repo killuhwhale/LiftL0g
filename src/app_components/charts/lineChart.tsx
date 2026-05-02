@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, View, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 import { useTheme } from "styled-components/native";
 import Icon from "react-native-vector-icons/Ionicons";
@@ -224,32 +224,71 @@ const TotalsLineChart: FunctionComponent<{
         style={{
           width: "100%",
           flexDirection: "row",
-          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 8,
         }}
       >
-        <TSParagrapghText>Totals by date</TSParagrapghText>
+        <View style={{ flexDirection: "row", alignItems: "center", marginRight: 12 }}>
+          <TSParagrapghText>Totals by date</TSParagrapghText>
+          <TouchableOpacity
+            onPress={() => {
+              setShowLineChartTagType(sTagLabels.length == 1 ? 0 : 1);
+              setShowLineChartNameType(sNameLabels.length == 1 ? 0 : 1);
+              setShowTags(!showTags);
+            }}
+            activeOpacity={0.75}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginLeft: 10,
+              paddingVertical: 7,
+              paddingHorizontal: 10,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: `${theme.palette.AWE_Blue}55`,
+              backgroundColor: `${theme.palette.AWE_Blue}14`,
+            }}
+          >
+            <Icon
+              name="swap-horizontal-outline"
+              color={theme.palette.AWE_Blue}
+              style={{ fontSize: 18, marginRight: 6 }}
+            />
+            <XSmallText
+              textStyles={{
+                color: theme.palette.AWE_Blue,
+                fontSize: 12,
+                fontWeight: "700",
+              }}
+            >
+              {showTags ? "Tags" : "Names"}
+            </XSmallText>
+          </TouchableOpacity>
+        </View>
 
-        <HorizontalPicker
-          key={`hp_${showTags}_${
-            showTags ? sTagLabels.length : sNameLabels.length
-          }`}
-          data={
-            showTags && sTagLabels.length > 0
-              ? sTagLabels
-              : !showTags && sNameLabels.length > 0
-              ? sNameLabels
-              : []
-          }
-          onChange={
-            showTags && sTagLabels.length > 0
-              ? setShowLineChartTagType
-              : !showTags && sNameLabels.length > 0
-              ? setShowLineChartNameType
-              : (val) => {
-                  console.log("Empty onChange called!!", val);
-                }
-          }
-        />
+        <View style={{ flex: 1, minHeight: 44 }}>
+          <HorizontalPicker
+            key={`hp_${showTags}_${
+              showTags ? sTagLabels.length : sNameLabels.length
+            }`}
+            data={
+              showTags && sTagLabels.length > 0
+                ? sTagLabels
+                : !showTags && sNameLabels.length > 0
+                ? sNameLabels
+                : []
+            }
+            onChange={
+              showTags && sTagLabels.length > 0
+                ? setShowLineChartTagType
+                : !showTags && sNameLabels.length > 0
+                ? setShowLineChartNameType
+                : (val) => {
+                    console.log("Empty onChange called!!", val);
+                  }
+            }
+          />
+        </View>
       </View>
 
       <View style={{ flex: 1, width: "100%", flexDirection: "row" }}>
@@ -259,21 +298,9 @@ const TotalsLineChart: FunctionComponent<{
             width: "100%",
             flexDirection: "row",
             alignItems: "center",
+            minHeight: 44,
           }}
         >
-          <Icon
-            name="repeat"
-            color={theme.palette.text}
-            style={{ fontSize: 24, marginHorizontal: 8 }}
-            onPress={() => {
-              // When the user changes between the 2 sets of data for the bLine Chart,
-              // The horizontal picker resets to to 1, so we need to update the data to reflect the change in the child component.
-              setShowLineChartTagType(sTagLabels.length == 1 ? 0 : 1);
-              setShowLineChartNameType(sNameLabels.length == 1 ? 0 : 1);
-              setShowTags(!showTags);
-            }}
-          />
-
           <HorizontalPicker
             key={`hpDataTypes_${__filteredDataTypesAbbrev.length}`}
             data={__filteredDataTypesAbbrev}

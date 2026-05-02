@@ -28,7 +28,7 @@ import { ErrorProps } from "@/src/app_components/shared";
 
 const asyncBaseQuery =
   (
-    { baseUrl }: { baseUrl: string } = { baseUrl: "" }
+    { baseUrl }: { baseUrl: string } = { baseUrl: "" },
   ): BaseQueryFn<
     {
       url: string;
@@ -78,7 +78,7 @@ const asyncBaseQuery =
        *
        */
       // Remove Authorization header when creating a new account
-      if (url === "users/" && (method === "POST" || method === "post")) {
+      if (url === "/users/" && (method === "POST" || method === "post")) {
         delete options.headers.Authorization;
       }
 
@@ -107,7 +107,7 @@ const asyncBaseQuery =
 
         devLog("refreshToken: ", refreshToken);
 
-        const res = await refreshAccessToken(`${BASEURL}token/refresh/`);
+        const res = await refreshAccessToken(`${BASEURL}/token/refresh/`);
         devLog("\n\n refreshAccessToken resp status: ", res.status);
         if (res.status === 400 || res.status === 401) {
           devLog("refreshAccessToken resp BAD!", res);
@@ -137,8 +137,10 @@ const asyncBaseQuery =
             };
           }
         }
-      } else {
+      } else if (result.ok) {
         return { data: jResult };
+      } else {
+        return { error: { status: result.status, data: jResult } };
       }
       return { error: { status: 404, data: "Errorneous behavior!" } };
     } catch (err: any) {
@@ -183,14 +185,14 @@ export const apiSlice = createApi({
   endpoints: (builder) => ({
     appControlMembershipOn: builder.query({
       query: (id) => {
-        return { url: "appcontrol/membership_on/" };
+        return { url: "//appcontrol/membership_on/" };
       },
       providesTags: ["AppControl"],
     }),
     // Users, Coaches and Members
     createUser: builder.mutation({
       query: (data = {}) => ({
-        url: "users/",
+        url: "/users/",
         method: "post",
         data,
         params: { contentType: "multipart/form-data" },
@@ -198,7 +200,7 @@ export const apiSlice = createApi({
     }),
     updateUsername: builder.mutation({
       query: (data = {}) => ({
-        url: "users/update_username/",
+        url: "/users/update_username/",
         method: "POST",
         data,
         params: { contentType: "multipart/form-data" },
@@ -208,12 +210,12 @@ export const apiSlice = createApi({
     getUsers: builder.query({
       // The URL for the request is '/fakeApi/posts'
       query: () => {
-        return { url: "users/" };
+        return { url: "/users/" };
       },
     }),
     createCoach: builder.mutation({
       query: (data = {}) => ({
-        url: "coaches/",
+        url: "/coaches/",
         method: "POST",
         data,
         params: { contentType: "multipart/form-data" },
@@ -225,13 +227,13 @@ export const apiSlice = createApi({
     getCoachesForGymClass: builder.query({
       // The URL for the request is '/fakeApi/posts'
       query: (id) => {
-        return { url: `coaches/${id}/coaches/` };
+        return { url: `/coaches/${id}/coaches/` };
       },
       providesTags: (result, err, arg) => [{ type: "Coaches", id: arg }],
     }),
     deleteCoach: builder.mutation({
       query: (data = {}) => ({
-        url: "coaches/remove/",
+        url: "/coaches/remove/",
         method: "DELETE",
         data,
         params: { contentType: "multipart/form-data" },
@@ -243,7 +245,7 @@ export const apiSlice = createApi({
 
     createMember: builder.mutation({
       query: (data = {}) => ({
-        url: "classMembers/",
+        url: "/classMembers/",
         method: "POST",
         data,
         params: { contentType: "multipart/form-data" },
@@ -255,13 +257,13 @@ export const apiSlice = createApi({
     getMembersForGymClass: builder.query<Member[], string>({
       // The URL for the request is '/fakeApi/posts'
       query: (id) => {
-        return { url: `classMembers/${id}/members/` };
+        return { url: `/classMembers/${id}/members/` };
       },
       providesTags: (result, err, arg) => [{ type: "Members", id: arg }],
     }),
     deleteMember: builder.mutation({
       query: (data = {}) => ({
-        url: "classMembers/remove/",
+        url: "/classMembers/remove/",
         method: "DELETE",
         data,
         params: { contentType: "multipart/form-data" },
@@ -274,14 +276,14 @@ export const apiSlice = createApi({
     // Gyms
     getGyms: builder.query({
       query: () => {
-        return { url: "gyms/" };
+        return { url: "/gyms/" };
       },
       providesTags: ["Gyms"],
     }),
     getUserGyms: builder.query({
       query: () => {
         return {
-          url: "gyms/user_gyms/",
+          url: "/gyms/user_gyms/",
           method: "get",
         };
       },
@@ -289,7 +291,7 @@ export const apiSlice = createApi({
     }),
     createGym: builder.mutation({
       query: (data = {}) => ({
-        url: "gyms/",
+        url: "/gyms/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -299,7 +301,7 @@ export const apiSlice = createApi({
 
     favoriteGym: builder.mutation({
       query: (data) => ({
-        url: "gyms/favorite/",
+        url: "/gyms/favorite/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -308,7 +310,7 @@ export const apiSlice = createApi({
     }),
     unfavoriteGym: builder.mutation({
       query: (data) => ({
-        url: "gyms/unfavorite/",
+        url: "/gyms/unfavorite/",
         method: "DELETE",
         data,
         params: { contentType: "multipart/form-data" },
@@ -317,7 +319,7 @@ export const apiSlice = createApi({
     }),
     deleteGym: builder.mutation({
       query: (id) => ({
-        url: `gyms/${id}/`,
+        url: `/gyms/${id}/`,
         method: "DELETE",
         data: { nonemptystupidandroid: 1 },
         params: { contentType: "application/json" },
@@ -326,7 +328,7 @@ export const apiSlice = createApi({
     }),
     getGymDataView: builder.query({
       query: (id) => {
-        return { url: `gyms/${id}/gymsclasses/` };
+        return { url: `/gyms/${id}/gymsclasses/` };
       },
       //
       providesTags: (result, error, arg) => {
@@ -337,7 +339,7 @@ export const apiSlice = createApi({
     // GymClass
     createGymClass: builder.mutation({
       query: (data = {}) => ({
-        url: "gymClasses/",
+        url: "/gymClasses/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -349,7 +351,7 @@ export const apiSlice = createApi({
 
     getGymClassDataView: builder.query({
       query: (id) => {
-        return { url: `gymClasses/${id}/workouts/` };
+        return { url: `/gymClasses/${id}/workouts/` };
       },
       providesTags: (result, error, arg) => {
         return [{ type: "GymClassWorkoutGroups", id: result.id }];
@@ -358,7 +360,7 @@ export const apiSlice = createApi({
 
     favoriteGymClass: builder.mutation({
       query: (data) => ({
-        url: "gymClasses/favorite/",
+        url: "/gymClasses/favorite/",
         method: "POST",
         data,
         params: { contentType: "multipart/form-data" },
@@ -367,7 +369,7 @@ export const apiSlice = createApi({
     }),
     unfavoriteGymClass: builder.mutation({
       query: (data) => ({
-        url: "gymClasses/unfavorite/",
+        url: "/gymClasses/unfavorite/",
         method: "DELETE",
         data,
         params: { contentType: "multipart/form-data" },
@@ -376,7 +378,7 @@ export const apiSlice = createApi({
     }),
     deleteGymClass: builder.mutation({
       query: (data) => ({
-        url: `gymClasses/${data.gymClassID}/`,
+        url: `/gymClasses/${data.gymClassID}/`,
         method: "DELETE",
         data: { nonemptystupidandroid: 1 },
         params: { contentType: "application/json" },
@@ -390,7 +392,7 @@ export const apiSlice = createApi({
     // Workouts
     getWorkoutNames: builder.query({
       query: () => {
-        return { url: "workoutNames/" };
+        return { url: "/workoutNames/" };
       },
     }),
 
@@ -398,7 +400,7 @@ export const apiSlice = createApi({
     // Create workoutItems also needs to invalidate this query
     getWorkoutsForGymClassWorkoutGroup: builder.query({
       query: (id) => {
-        return { url: `workoutGroups/${id}/class_workouts/` };
+        return { url: `/workoutGroups/${id}/class_workouts/` };
       },
       providesTags: (result, error, arg) => {
         return [{ type: "WorkoutGroupWorkouts", id: arg }, "UserWorkoutGroups"];
@@ -408,7 +410,7 @@ export const apiSlice = createApi({
     // WorkoutScreen
     getWorkoutsForUsersWorkoutGroup: builder.query({
       query: (id) => {
-        return { url: `workoutGroups/${id}/user_workouts/` };
+        return { url: `/workoutGroups/${id}/user_workouts/` };
       },
       providesTags: (result, error, arg) => {
         devLog("Provides tag, WorkoutGroupWorkouts: ", arg);
@@ -417,25 +419,25 @@ export const apiSlice = createApi({
     }),
     createWorkoutGroup: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutGroups/",
+        url: "/workoutGroups/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
       }),
-      invalidatesTags: [{ type: "UserWorkoutGroups" }],
+      invalidatesTags: [{ type: "UserWorkoutGroups" }, "DailySnapshot"],
     }),
     duplicateWorkoutGroup: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutGroups/duplicate/",
+        url: "/workoutGroups/duplicate/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
       }),
-      invalidatesTags: [{ type: "UserWorkoutGroups" }],
+      invalidatesTags: [{ type: "UserWorkoutGroups" }, "DailySnapshot"],
     }),
     finishWorkoutGroup: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutGroups/finish/",
+        url: "/workoutGroups/finish/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -447,6 +449,7 @@ export const apiSlice = createApi({
         return [
           { type: "WorkoutGroupWorkouts", id: data.get("group") },
           { type: "UserWorkoutGroups" },
+          "StatsQuery",
           "DailySnapshot",
         ];
       },
@@ -456,7 +459,7 @@ export const apiSlice = createApi({
         const mapData = new Map<string, string>(data._parts);
 
         return {
-          url: `workoutGroups/${mapData.get("id")}/`,
+          url: `/workoutGroups/${mapData.get("id")}/`,
           method: "DELETE",
           data,
           params: { contentType: "multipart/form-data" },
@@ -468,19 +471,21 @@ export const apiSlice = createApi({
         return data.get("owned_by_class")
           ? [
               { type: "GymClassWorkoutGroups", id: data.get("owner_id") },
+              { type: "WorkoutGroupWorkouts", id: data.get("id") },
               "DailySnapshot",
             ]
           : [
               "UserWorkoutGroups",
               "DailySnapshot",
               { type: "UserWorkoutGroups" },
+              { type: "WorkoutGroupWorkouts", id: data.get("id") },
             ];
       },
     }),
 
     updateWorkoutGroupTitle: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutGroups/update_title/",
+        url: "/workoutGroups/update_title/",
         method: "POST",
         data: data,
         params: { contentType: "application/json" },
@@ -492,7 +497,7 @@ export const apiSlice = createApi({
     }),
     updateWorkoutGroupCaption: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutGroups/update_caption/",
+        url: "/workoutGroups/update_caption/",
         method: "POST",
         data: data,
         params: { contentType: "application/json" },
@@ -504,7 +509,7 @@ export const apiSlice = createApi({
     }),
     updateWorkoutGroupForDate: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutGroups/update_for_date/",
+        url: "/workoutGroups/update_for_date/",
         method: "POST",
         data: data,
         params: { contentType: "application/json" },
@@ -517,7 +522,7 @@ export const apiSlice = createApi({
 
     createWorkout: builder.mutation({
       query: (data = {}) => ({
-        url: "workouts/",
+        url: "/workouts/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -542,7 +547,7 @@ export const apiSlice = createApi({
         const data = new Map<string, string>(arg._parts);
         devLog("Update workout data: ", data);
         return {
-          url: `workouts/${data.get("id")}/`,
+          url: `/workouts/${data.get("id")}/`,
           method: "PUT",
           data: arg,
           params: { contentType: "multipart/form-data" },
@@ -551,13 +556,18 @@ export const apiSlice = createApi({
       invalidatesTags: (result, error, arg) => {
         const data = new Map<string, string>(arg._parts);
         devLog("Invalidates tag, Workouts: ", data);
-        return [{ type: "WorkoutGroupWorkouts" }];
+        return [
+          { type: "WorkoutGroupWorkouts" },
+          { type: "UserWorkoutGroups" },
+          { type: "StatsQuery" },
+          { type: "DailySnapshot" },
+        ];
       },
     }),
 
     getWorkoutByID: builder.query({
       query: (id) => {
-        return { url: `workouts/${id}/` };
+        return { url: `/workouts/${id}/` };
       },
       providesTags: (result, error, arg) => {
         devLog("Provides tag, Workouts: ", arg);
@@ -570,7 +580,7 @@ export const apiSlice = createApi({
         const data = new Map<string, string>(arg._parts);
 
         return {
-          url: `workouts/${data.get("id")}/`,
+          url: `/workouts/${data.get("id")}/`,
           method: "DELETE",
           data: { nonemptystupidandroid: 1 },
           params: { contentType: "multipart/form-data" },
@@ -582,13 +592,18 @@ export const apiSlice = createApi({
         }
         const data = new Map<string, string>(arg._parts);
 
-        return [{ type: "WorkoutGroupWorkouts", id: data.get("group") }];
+        return [
+          { type: "WorkoutGroupWorkouts", id: data.get("group") },
+          { type: "UserWorkoutGroups" },
+          { type: "StatsQuery" },
+          { type: "DailySnapshot" },
+        ];
       },
     }),
 
     createWorkoutItems: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutItems/items/",
+        url: "/workoutItems/items/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -611,7 +626,7 @@ export const apiSlice = createApi({
 
     updateWorkoutItems: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutItems/update_items/",
+        url: "/workoutItems/update_items/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -635,7 +650,7 @@ export const apiSlice = createApi({
 
     createWorkoutDualItems: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutDualItems/items/",
+        url: "/workoutDualItems/items/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -645,7 +660,7 @@ export const apiSlice = createApi({
         devLog(
           "Invalidating create Dual Item: ",
           data.get("workout_group"),
-          data
+          data,
         );
         return [
           { type: "WorkoutGroupWorkouts" },
@@ -658,7 +673,7 @@ export const apiSlice = createApi({
 
     recordWorkoutDualItems: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutDualItems/record_items/",
+        url: "/workoutDualItems/record_items/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -677,7 +692,7 @@ export const apiSlice = createApi({
 
     updateWorkoutDualItems: builder.mutation({
       query: (data = {}) => ({
-        url: "workoutDualItems/update_items/",
+        url: "/workoutDualItems/update_items/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -697,7 +712,7 @@ export const apiSlice = createApi({
     // Completed Workouts
     createCompletedWorkout: builder.mutation({
       query: (data = {}) => ({
-        url: "completedWorkoutGroups/",
+        url: "/completedWorkoutGroups/",
         method: "POST",
         data: data,
         params: { contentType: "multipart/form-data" },
@@ -736,12 +751,12 @@ export const apiSlice = createApi({
     }),
     getCompletedWorkout: builder.query({
       query: (id) => ({
-        url: `completedWorkoutGroups/${id}/completed_workout_group/`,
+        url: `/completedWorkoutGroups/${id}/completed_workout_group/`,
       }),
     }),
     getCompletedWorkoutByWorkoutID: builder.query({
       query: (id) => ({
-        url: `completedWorkoutGroups/${id}/completed_workout_group_by_og_workout_group/`,
+        url: `/completedWorkoutGroups/${id}/completed_workout_group_by_og_workout_group/`,
       }),
       providesTags: (result, error, arg) => {
         return [{ type: "WorkoutGroupWorkouts", id: arg }];
@@ -751,7 +766,7 @@ export const apiSlice = createApi({
       query: (data) => {
         const mappedData = new Map<string, string>(data._parts);
         return {
-          url: `completedWorkoutGroups/${mappedData.get("id")}/`,
+          url: `/completedWorkoutGroups/${mappedData.get("id")}/`,
           method: "DELETE",
           data: { nonemptystupidandroid: 1 },
           params: { contentType: "application/json" },
@@ -772,52 +787,66 @@ export const apiSlice = createApi({
           { type: "WorkoutGroupWorkouts", id: data.get("workout_group") }, // Reset WorkoutScreen
           { type: "UserWorkoutGroups" }, // Reset Profile workout list
           { type: "GymClassWorkoutGroups", id: data.get("owner_id") },
+          { type: "StatsQuery" },
+          { type: "DailySnapshot" },
         ];
       },
     }),
 
     deleteCompletedWorkout: builder.mutation({
       query: (id) => ({
-        url: `completedWorkouts/${id}/`,
+        url: `/completedWorkouts/${id}/`,
         method: "DELETE",
         data: { nonemptystupidandroid: 1 },
         params: { contentType: "application/json" },
       }),
+      invalidatesTags: [
+        { type: "WorkoutGroupWorkouts" },
+        { type: "UserWorkoutGroups" },
+        { type: "StatsQuery" },
+        { type: "DailySnapshot" },
+      ],
     }),
 
     bulkCreateTemplates: builder.mutation({
       query: (body) => {
         console.log("APLSLICE Bulk Template: body", body);
         return {
-          url: `bulktemplates/create_template/`,
+          url: `/bulktemplates/create_template/`,
           method: "POST",
           data: body,
         };
       },
-      invalidatesTags: [{ type: "WorkoutGroupWorkouts" }],
+      invalidatesTags: [
+        { type: "WorkoutGroupWorkouts" },
+        { type: "UserWorkoutGroups" },
+      ],
     }),
     resetTemplates: builder.mutation({
       query: (body) => {
         return {
-          url: `bulktemplates/reset_template/`,
+          url: `/bulktemplates/reset_template/`,
           method: "POST",
           data: body,
         };
       },
-      invalidatesTags: [{ type: "WorkoutGroupWorkouts" }],
+      invalidatesTags: [
+        { type: "WorkoutGroupWorkouts" },
+        { type: "UserWorkoutGroups" },
+      ],
     }),
 
     // User and Profile
     getProfileView: builder.query({
       query: () => {
-        return { url: "profile/profile/" };
+        return { url: "/profile/profile/" };
       },
       providesTags: ["User"],
     }),
     // Expanded Profile data view
     getProfileWorkoutGroups: builder.query({
       query: (page: number = 1) => {
-        return { url: `profile/workout_groups/?page=${page}` };
+        return { url: `/profile/workout_groups/?page=${page}` };
       },
       providesTags: (result, error, page) => [
         { type: "UserWorkoutGroups", id: page },
@@ -828,7 +857,7 @@ export const apiSlice = createApi({
     getTemplateWorkoutGroups: builder.query({
       query: (templateName) => {
         return {
-          url: `profile/template_workout_groups/?template_name=${templateName}`,
+          url: `/profile/template_workout_groups/?template_name=${templateName}`,
         };
       },
       providesTags: (result, error, page) => [{ type: "UserWorkoutGroups" }],
@@ -837,7 +866,7 @@ export const apiSlice = createApi({
     getLastXWorkoutGroups: builder.query({
       query: (userID) => {
         return {
-          url: `workoutGroups/last_x_workout_groups/?user_id=${userID}`,
+          url: `/workoutGroups/last_x_workout_groups/?user_id=${userID}`,
         };
       },
       providesTags: (result, error, page) => [{ type: "UserWorkoutGroups" }],
@@ -845,8 +874,8 @@ export const apiSlice = createApi({
     searchWorkoutGroups: builder.query({
       query: ({ query, userID }) => {
         return {
-          url: `profile/workout_group_query/?user_id=${userID}&query=${encodeURIComponent(
-            query
+          url: `/profile/workout_group_query/?user_id=${userID}&query=${encodeURIComponent(
+            query,
           )}`,
         };
       },
@@ -861,7 +890,7 @@ export const apiSlice = createApi({
         userMaxes,
         lastWorkoutGroups,
       }) => ({
-        url: "ai/create_workout/",
+        url: "/ai/create_workout/",
         method: "POST",
         data: {
           prompt,
@@ -876,27 +905,27 @@ export const apiSlice = createApi({
 
     getProfileGymFavs: builder.query({
       query: () => {
-        return { url: "profile/gym_favs/" };
+        return { url: "/profile/gym_favs/" };
       },
       providesTags: ["GymFavs"],
     }),
     getProfileGymClassFavs: builder.query({
       query: () => {
-        return { url: "profile/gym_class_favs/" };
+        return { url: "/profile/gym_class_favs/" };
       },
       providesTags: ["GymClassFavs"],
     }),
 
     getUserInfo: builder.query({
       query: (id) => {
-        return { url: "users/user_info/" };
+        return { url: "/users/user_info/" };
       },
       providesTags: ["User"],
     }),
 
     validateUserToken: builder.query({
       query: (id) => {
-        return { url: "users/user_info/" };
+        return { url: "/users/user_info/" };
       },
       providesTags: ["UserAuth"],
     }),
@@ -905,7 +934,7 @@ export const apiSlice = createApi({
     getUserWorkoutMaxes: builder.query({
       query: (user_id) => {
         return {
-          url: `maxes/list_workouts/?user_id=${user_id}`,
+          url: `/maxes/list_workouts/?user_id=${user_id}`,
         };
       },
       providesTags: ["WorkoutItemMaxes"],
@@ -914,7 +943,7 @@ export const apiSlice = createApi({
     getWorkoutMaxHistory: builder.query({
       query: (data) => {
         return {
-          url: `maxes/${data.workoutItemId}/history/?user_id=${data.user_id}`,
+          url: `/maxes/${data.workoutItemId}/history/?user_id=${data.user_id}`,
         };
       },
       providesTags: (result, error, workoutItemId) => [
@@ -924,7 +953,7 @@ export const apiSlice = createApi({
 
     getWorkoutMaxProgress: builder.query({
       query: (data) => {
-        return { url: `maxes/${data.workoutItemId}/progress/`, body: data };
+        return { url: `/maxes/${data.workoutItemId}/progress/`, body: data };
       },
       providesTags: (result, error, workoutItemId) => [
         { type: "WorkoutItemMaxes", id: workoutItemId },
@@ -933,7 +962,7 @@ export const apiSlice = createApi({
 
     updateWorkoutMax: builder.mutation({
       query: (data) => ({
-        url: "maxes/update_max/",
+        url: "/maxes/update_max/",
         method: "POST",
         data,
       }),
@@ -944,7 +973,7 @@ export const apiSlice = createApi({
     getCompletedWorkoutGroupsForUserByDateRange: builder.query({
       query: (data = {}) => {
         return {
-          url: `stats/${data.id}/user_workouts/?start_date=${data.startDate}&end_date=${data.endDate}`,
+          url: `/stats/${data.id}/user_workouts/?start_date=${data.startDate}&end_date=${data.endDate}`,
         };
       },
       providesTags: (result, error, arg) => {
@@ -954,35 +983,34 @@ export const apiSlice = createApi({
 
     getDailySnapshot: builder.query({
       query: (id) => {
-        return { url: "snapshot/user_daily/" };
+        return { url: "/snapshot/user_daily/" };
       },
       providesTags: ["DailySnapshot"],
     }),
 
     getAdUnits: builder.query({
       query: (id) => {
-        return { url: "snapshot/ads/" };
+        return { url: "/snapshot/ads/" };
       },
       providesTags: ["AD_UNITS"],
     }),
 
     ping: builder.query({
-      query: () => ({ url: "ping/" }),
+      query: () => ({ url: "/ping/" }),
     }),
 
     coachChat: builder.mutation({
       query: (data) => ({
-        url: "ai/chat/",
+        url: "/ai/chat/",
         method: "POST",
         data,
       }),
     }),
 
     getTokenStatus: builder.query({
-      query: (userId) => ({ url: `ai/token_status/?user_id=${userId}` }),
+      query: (userId) => ({ url: `/ai/token_status/?user_id=${userId}` }),
       providesTags: ["TOKEN_STATUS"],
     }),
-
   }),
 });
 

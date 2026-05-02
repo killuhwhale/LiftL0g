@@ -6,6 +6,9 @@ import {
   WORKOUT_TYPES,
   DISTANCE_UNITS,
   DURATION_UNITS,
+  REPS_W,
+  ROUNDS_W,
+  parseNumList,
 } from "../src/app_components/shared";
 import {
   TSCaptionText,
@@ -24,6 +27,7 @@ import { useTheme } from "styled-components/native";
 import { AnyWorkoutItem } from "@/src/app_components/Cards/types";
 import { COLORSPALETTE, formatLongWorkoutDate } from "@/src/utils/algos";
 import Icon from "react-native-vector-icons/Ionicons";
+import ActionCancelModal from "@/src/app_components/modals/ActionCancelModal";
 
 const ScreenContainer = styled(Container)`
   background-color: ${(props) => props.theme.palette.backgroundColor};
@@ -64,22 +68,42 @@ const ChecklistItem: FunctionComponent<{
   schemeType: number;
   checked: boolean;
   onToggle: () => void;
-}> = ({ item, schemeType, checked, onToggle }) => {
+  onIncrement?: () => void;
+  onDecrement?: () => void;
+  roundCount?: number;
+  checkedRounds?: boolean[];
+}> = ({
+  item,
+  schemeType,
+  checked,
+  onToggle,
+  onIncrement,
+  onDecrement,
+  roundCount = 0,
+  checkedRounds = [],
+}) => {
   const theme = useTheme();
   const metricLine = buildMetricLine(item, schemeType);
   const weightLine = buildWeightLine(item);
   const isSuperset = schemeType === 0 && item.ssid >= 0;
   const ssColor = isSuperset ? COLORSPALETTE[item.ssid] : undefined;
+  const usesRoundChecklist =
+    WORKOUT_TYPES[schemeType] === REPS_W || WORKOUT_TYPES[schemeType] === ROUNDS_W;
+  const allRoundsChecked =
+    usesRoundChecklist &&
+    roundCount > 0 &&
+    checkedRounds.length === roundCount &&
+    checkedRounds.every(Boolean);
 
   return (
-    <TouchableOpacity onPress={onToggle} activeOpacity={0.7}>
+    <View>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           paddingVertical: 12,
           paddingHorizontal: 4,
-          opacity: checked ? 0.4 : 1,
+          opacity: usesRoundChecklist ? (allRoundsChecked ? 0.4 : 1) : checked ? 0.4 : 1,
         }}
       >
         {/* Superset left border */}
@@ -98,17 +122,53 @@ const ChecklistItem: FunctionComponent<{
         )}
 
         {/* Checkbox icon */}
-        <Icon
-          name={checked ? "checkmark-circle" : "ellipse-outline"}
-          color={checked ? theme.palette.AWE_Green : theme.palette.text}
-          style={{ fontSize: 26, marginRight: 14, marginLeft: isSuperset ? 8 : 0 }}
-        />
+        {!usesRoundChecklist ? (
+          <TouchableOpacity onPress={onToggle} activeOpacity={0.7}>
+            <Icon
+              name={checked ? "checkmark-circle" : "ellipse-outline"}
+              color={checked ? theme.palette.AWE_Green : theme.palette.text}
+              style={{ fontSize: 26, marginRight: 14, marginLeft: isSuperset ? 8 : 0 }}
+            />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={onDecrement}
+            activeOpacity={0.7}
+            style={{
+              width: 30,
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: 10,
+              marginLeft: isSuperset ? 8 : 0,
+            }}
+          >
+            <Icon
+              name="remove-circle-outline"
+              color={theme.palette.AWE_Red ?? theme.palette.text}
+              style={{ fontSize: 22 }}
+            />
+            <TSCaptionText textStyles={{ opacity: 0.7, fontSize: 10 }}>
+              -
+            </TSCaptionText>
+          </TouchableOpacity>
+        )}
 
         {/* Exercise details */}
-        <View style={{ flex: 1 }}>
+        <TouchableOpacity
+          onPress={usesRoundChecklist ? onIncrement : onToggle}
+          activeOpacity={0.7}
+          style={{ flex: 1 }}
+        >
           <TSListTitleText
             textStyles={{
-              textDecorationLine: checked ? "line-through" : "none",
+              textDecorationLine:
+                usesRoundChecklist
+                  ? allRoundsChecked
+                    ? "line-through"
+                    : "none"
+                  : checked
+                  ? "line-through"
+                  : "none",
             }}
           >
             {item.name.name}
@@ -143,7 +203,52 @@ const ChecklistItem: FunctionComponent<{
               Penalty: {item.penalty}
             </TSCaptionText>
           ) : null}
-        </View>
+
+          {usesRoundChecklist && roundCount > 0 ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+              {Array.from({ length: roundCount }, (_, roundIdx) => {
+                const roundChecked = checkedRounds[roundIdx] ?? false;
+                return (
+                  <View
+                    key={`${item.id}-round-${roundIdx}`}
+                    style={{ alignItems: "center" }}
+                  >
+                    <Icon
+                      name={roundChecked ? "checkmark-circle" : "ellipse-outline"}
+                      color={roundChecked ? theme.palette.AWE_Green : theme.palette.text}
+                      style={{ fontSize: 22 }}
+                    />
+                    <TSCaptionText textStyles={{ opacity: 0.7, fontSize: 10 }}>
+                      {roundIdx + 1}
+                    </TSCaptionText>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+        </TouchableOpacity>
+
+        {usesRoundChecklist ? (
+          <TouchableOpacity
+            onPress={onIncrement}
+            activeOpacity={0.7}
+            style={{
+              width: 30,
+              alignItems: "center",
+              justifyContent: "center",
+              marginLeft: 10,
+            }}
+          >
+            <Icon
+              name="add-circle-outline"
+              color={theme.palette.AWE_Green}
+              style={{ fontSize: 22 }}
+            />
+            <TSCaptionText textStyles={{ opacity: 0.7, fontSize: 10 }}>
+              +
+            </TSCaptionText>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Row separator */}
@@ -155,7 +260,7 @@ const ChecklistItem: FunctionComponent<{
           marginLeft: 44,
         }}
       />
-    </TouchableOpacity>
+    </View>
   );
 };
 
@@ -241,21 +346,119 @@ const WorkoutDetailScreen: FunctionComponent = () => {
   const items: AnyWorkoutItem[] =
     isSuccess && !isLoading ? workout.workout_items : [];
 
-  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [pendingAction, setPendingAction] = useState<null | (() => void)>(null);
 
-  const toggle = (id: number) =>
+  const getRoundCount = () => {
+    const workoutType = WORKOUT_TYPES[scheme_type];
+    if (workoutType === REPS_W) {
+      const repsPerRound = parseNumList(scheme_rounds ?? "");
+      return repsPerRound.filter((n) => n > 0).length;
+    }
+    if (workoutType === ROUNDS_W) {
+      const rounds = parseInt(scheme_rounds ?? "", 10);
+      return Number.isFinite(rounds) && rounds > 0 ? rounds : 0;
+    }
+    return 0;
+  };
+
+  const roundCount = getRoundCount();
+  const usesRoundChecklist =
+    WORKOUT_TYPES[scheme_type] === REPS_W || WORKOUT_TYPES[scheme_type] === ROUNDS_W;
+  const getItemKey = (itemId: number) => `item-${itemId}`;
+  const getItemRoundKey = (itemId: number, roundIdx: number) =>
+    `item-${itemId}-round-${roundIdx}`;
+  const getAllChecklistKeys = () =>
+    items.flatMap((item) =>
+      usesRoundChecklist && roundCount > 0
+        ? Array.from({ length: roundCount }, (_, roundIdx) =>
+            getItemRoundKey(item.id, roundIdx)
+          )
+        : [getItemKey(item.id)]
+    );
+
+  const toggle = (id: number) => {
     setChecked((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (!usesRoundChecklist || roundCount <= 0) {
+        const itemKey = getItemKey(id);
+        next.has(itemKey) ? next.delete(itemKey) : next.add(itemKey);
+        return next;
+      }
       return next;
     });
+  };
+
+  const incrementRoundProgress = (id: number) => {
+    if (!usesRoundChecklist || roundCount <= 0) {
+      toggle(id);
+      return;
+    }
+
+    setChecked((prev) => {
+      const next = new Set(prev);
+      const roundKeys = Array.from({ length: roundCount }, (_, roundIdx) =>
+        getItemRoundKey(id, roundIdx)
+      );
+      const checkedRoundsForItem = roundKeys.filter((key) => next.has(key)).length;
+
+      if (checkedRoundsForItem < roundCount) {
+        next.add(roundKeys[checkedRoundsForItem]);
+      }
+      return next;
+    });
+  };
+
+  const decrementRoundProgress = (id: number) => {
+    if (!usesRoundChecklist || roundCount <= 0) {
+      toggle(id);
+      return;
+    }
+
+    setChecked((prev) => {
+      const next = new Set(prev);
+      const roundKeys = Array.from({ length: roundCount }, (_, roundIdx) =>
+        getItemRoundKey(id, roundIdx)
+      );
+      const checkedRoundsForItem = roundKeys.filter((key) => next.has(key)).length;
+
+      if (checkedRoundsForItem > 0) {
+        next.delete(roundKeys[checkedRoundsForItem - 1]);
+      }
+      return next;
+    });
+  };
 
   const toggleAll = () => {
-    if (checked.size === items.length) {
-      setChecked(new Set());
-    } else {
-      setChecked(new Set(items.map((i) => i.id)));
-    }
+    const allKeys = getAllChecklistKeys();
+    const action = () => {
+      if (checked.size === allKeys.length) {
+        setChecked(new Set());
+      } else {
+        setChecked(new Set(allKeys));
+      }
+    };
+
+    setConfirmText(
+      checked.size === allKeys.length
+        ? "Clear all checklist progress?"
+        : "Mark all checklist items as complete?"
+    );
+    setPendingAction(() => action);
+    setConfirmVisible(true);
+  };
+
+  const runPendingAction = () => {
+    pendingAction?.();
+    setConfirmVisible(false);
+    setPendingAction(null);
+  };
+
+  const closeConfirm = () => {
+    setConfirmVisible(false);
+    setPendingAction(null);
   };
 
   const tags = workout?.stats?.tags ?? {};
@@ -340,7 +543,7 @@ const WorkoutDetailScreen: FunctionComponent = () => {
             )}
 
             <MasterCheckboxRow
-              total={items.length}
+              total={getAllChecklistKeys().length}
               checkedCount={checked.size}
               onToggleAll={toggleAll}
             />
@@ -350,8 +553,19 @@ const WorkoutDetailScreen: FunctionComponent = () => {
                 key={item.id}
                 item={item}
                 schemeType={scheme_type}
-                checked={checked.has(item.id)}
+                checked={checked.has(getItemKey(item.id))}
+                roundCount={usesRoundChecklist ? roundCount : 0}
+                checkedRounds={
+                  usesRoundChecklist
+                    ? Array.from(
+                        { length: roundCount },
+                        (_, roundIdx) => checked.has(getItemRoundKey(item.id, roundIdx))
+                      )
+                    : []
+                }
                 onToggle={() => toggle(item.id)}
+                onIncrement={() => incrementRoundProgress(item.id)}
+                onDecrement={() => decrementRoundProgress(item.id)}
               />
             ))}
           </View>
@@ -362,6 +576,15 @@ const WorkoutDetailScreen: FunctionComponent = () => {
           <StatsPanel tags={tags} names={names} />
         </View>
       </ScrollView>
+
+      <ActionCancelModal
+        modalVisible={confirmVisible}
+        onRequestClose={closeConfirm}
+        closeText="Cancel"
+        actionText="Confirm"
+        modalText={confirmText}
+        onAction={runPendingAction}
+      />
     </ScreenContainer>
   );
 };

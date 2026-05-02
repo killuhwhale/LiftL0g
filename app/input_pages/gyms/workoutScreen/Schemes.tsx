@@ -5,7 +5,6 @@ import {
   ROUNDS_W,
   STANDARD_W,
   WORKOUT_TYPES,
-  mdFontSize,
   numFilter,
   numFilterWithSpaces,
 } from "@/src/app_components/shared";
@@ -16,8 +15,6 @@ import { useTheme } from "styled-components";
 import Icon from "react-native-vector-icons/Ionicons";
 import { TestIDs } from "@/src/utils/constants";
 
-const INPUT_HEADER_HEIGHT = 25;
-
 const RepSheme: FunctionComponent<{
   onSchemeRoundChange(scheme: string): void;
   schemeRounds: string;
@@ -26,27 +23,29 @@ const RepSheme: FunctionComponent<{
   const theme = useTheme();
 
   return (
-    <View
-      style={{ marginBottom: 15, height: INPUT_HEADER_HEIGHT }}
-      testID={TestIDs.CreateWorkoutSchemeReps.name()}
-    >
+    <View style={{ marginBottom: 15 }} testID={TestIDs.CreateWorkoutSchemeReps.name()}>
       <Input
-        placeholder="Reps"
+        placeholder="Ex: 21 15 9"
         editable={props.editable}
         onChangeText={props.onSchemeRoundChange}
         value={props.schemeRounds}
-        label="Reps"
+        label=""
+        inputStyles={{
+          justifyContent: "center",
+          alignItems: "center",
+        }}
         containerStyle={{
           width: "100%",
           backgroundColor: theme.palette.darkGray,
-          borderRadius: 8,
-          paddingHorizontal: 8,
+          borderRadius: 10,
+          paddingHorizontal: 10,
+          height: 44,
         }}
         leading={
           <Icon
-            name="code-outline"
-            color={theme.palette.text}
-            style={{ fontSize: mdFontSize }}
+            name="text-outline"
+            color={`${theme.palette.text}66`}
+            style={{ fontSize: 16 }}
           />
         }
       />
@@ -68,12 +67,9 @@ const RoundSheme: FunctionComponent<{
       }
     : {};
   return (
-    <View
-      style={{ marginBottom: 15, height: INPUT_HEADER_HEIGHT }}
-      testID={TestIDs.CreateWorkoutSchemeRounds.name()}
-    >
+    <View style={{ marginBottom: 15 }} testID={TestIDs.CreateWorkoutSchemeRounds.name()}>
       <Input
-        placeholder="Rounds"
+        placeholder="Ex: 10"
         testID={TestIDs.CreateWorkoutSchemeRounds.name()}
         onChangeText={props.onSchemeRoundChange}
         value={props.schemeRounds}
@@ -81,17 +77,22 @@ const RoundSheme: FunctionComponent<{
         helperText="Please enter number of rounds"
         isError={props.isError}
         editable={props.editable}
+        inputStyles={{
+          justifyContent: "center",
+          alignItems: "center",
+        }}
         containerStyle={{
           width: "100%",
           backgroundColor: theme.palette.darkGray,
-          borderRadius: 8,
-          paddingHorizontal: 8,
+          borderRadius: 10,
+          paddingHorizontal: 10,
+          height: 44,
         }}
         leading={
           <Icon
-            name="code-outline"
-            color={theme.palette.text}
-            style={{ fontSize: mdFontSize }}
+            name="text-outline"
+            color={`${theme.palette.text}66`}
+            style={{ fontSize: 16 }}
           />
         }
       />
@@ -105,28 +106,30 @@ const CreativeScheme: FunctionComponent<{
 }> = (props) => {
   const theme = useTheme();
   return (
-    <View
-      style={{ marginBottom: 15, height: INPUT_HEADER_HEIGHT }}
-      testID={TestIDs.CreateWorkoutSchemeCreative.name()}
-    >
+    <View style={{ marginBottom: 15 }} testID={TestIDs.CreateWorkoutSchemeCreative.name()}>
       <Input
         placeholder="20 min AMRAP"
         testID={TestIDs.CreateWorkoutSchemeCreative.name()}
         onChangeText={props.onSchemeInstructionChange}
         value={props.instruction}
-        label="Instructions"
+        label=""
         helperText=""
+        inputStyles={{
+          justifyContent: "center",
+          alignItems: "center",
+        }}
         containerStyle={{
           width: "100%",
           backgroundColor: theme.palette.darkGray,
-          borderRadius: 8,
-          paddingHorizontal: 8,
+          borderRadius: 10,
+          paddingHorizontal: 10,
+          height: 44,
         }}
         leading={
           <Icon
-            name="code-outline"
-            color={theme.palette.text}
-            style={{ fontSize: mdFontSize }}
+            name="text-outline"
+            color={`${theme.palette.text}66`}
+            style={{ fontSize: 16 }}
           />
         }
       />

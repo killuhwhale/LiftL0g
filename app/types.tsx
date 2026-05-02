@@ -9,7 +9,7 @@ export interface UserProps {
   customer_id: string;
   email: string;
   id: number;
-  sub_end_date: Date;
+  sub_end_date: Date | string;
   subscribed: boolean;
   username: string;
   membership_on: boolean;
